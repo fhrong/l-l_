@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Marmitaria Express — Promo 2x1</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="container">
+    <div class="hero">
+      <header>
+        <div class="logo">MARM<strong>EXP</strong></div>
+        <div>
+          <h1>Marmitaria Express — Promo 2x1: leve 2 por R$24,90</h1>
+          <p class="lead">Selecione seu Estado e Cidade para verificar disponibilidade na sua região.</p>
+        </div>
+      </header>
+
+      <section class="search-card">
+        <form id="searchForm" style="width:100%;display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
+          <div style="flex:1;min-width:180px;">
+            <label for="state">Estado</label>
+            <select id="state" required></select>
+          </div>
+          <div style="flex:1;min-width:180px;">
+            <label for="city">Cidade</label>
+            <select id="city" disabled required></select>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px">
+            <div class="kicker" id="availability-kicker">Verifique agora</div>
+            <button class="btn" id="checkBtn" type="submit">Encontrar unidade</button>
+          </div>
+        </form>
+      </section>
+    </div>
+
+
+    <div id="resultArea" style="display:none">
+      <div id="orderFlow" style="display:none">
+        <div style="margin-top:12px">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <h2 style="margin:0">
+              Escolha suas marmitas — promoção 2 por 
+              <span style="color:var(--accent)">R$24,90</span>
+            </h2>
+            <div class="trust" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px">
+              <div class="pill" style="flex:1 1 120px;text-align:center">Entrega ~35min</div>
+              <div class="pill" style="flex:1 1 120px;text-align:center">Pagamento seguro</div>
+            </div>
+          </div>
+
+          <div class="marmitas-grid" id="marmitasGrid"></div>
+
+          <!-- Disclaimer: imagens meramente ilustrativas -->
+        </div>
+
+        <div class="extras" id="extrasBox" style="display:none">
+          <h3>Adicionais</h3>
+          <div id="extrasList"></div>
+        </div>
+
+        <div class="bebidas" id="bebidasBox" style="display:none">
+          <h3>Bebidas</h3>
+          <div id="bebidasList"></div>
+        </div>
+
+        <div class="address" id="addressBox" style="display:none">
+          <h3>Endereço de entrega</h3>
+          <div class="address-fields">
+            <input type="text" id="cepInput" placeholder="CEP" maxlength="9" required>
+            <div id="cepError" class="input-error" style="display:none">
+              Endereço fora da cidade selecionada. Por favor, corrija.
+            </div>
+            <input type="tel" id="phoneInput" placeholder="Celular com DDD" maxlength="15" required>
+            <div id="phoneError" class="input-error" style="display:none">
+              Número inválido. Verifique o DDD e o formato.
+            </div>
+            <input type="text" id="nomeInput" placeholder="Seu nome completo" required>
+            <div class="address-row">
+              <input type="text" id="ruaInput" placeholder="Rua" required>
+              <input type="text" id="numeroInput" placeholder="Número" required>
+            </div>
+            <input type="text" id="bairroInput" placeholder="Bairro" required>
+            <div class="cpf-row">
+              <input type="checkbox" id="cpfCheck">
+              <label for="cpfCheck">Adicionar CPF na nota?</label>
+              <input type="text" id="cpfInput" placeholder="CPF (opcional)" maxlength="14" style="display:none">
+            </div>
+          </div>
+        </div>
+
+        <div class="summary" id="summaryBox" style="display:none">
+          <h3>Resumo do pedido</h3>
+          <div id="summaryLines"></div>
+          <div class="line">
+            <div>Promoção 2 marmitas</div>
+            <div id="promoPrice"></div>
+          </div>
+          <div class="line total">
+            <div>Total</div>
+            <a class="btn" id="checkoutBtn" href="#">Finalizar pedido</a>
+            <div id="orderTotal"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+
+      
+
+    <section class="promo-timer">
+      <div class="promo-timer-box">
+        <div class="promo-timer-title">A promoção vai acabar em:</div>
+        <div class="promo-timer-countdown">
+          <div class="promo-timer-unit">
+            <span id="promoMinutes" class="promo-timer-num">27</span>
+            <div class="promo-timer-label">Minutos</div>
+          </div>
+          <div class="promo-timer-unit">
+            <span id="promoSeconds" class="promo-timer-num">37</span>
+            <div class="promo-timer-label">Segundos</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="reviews-section">
+      <div class="reviews-header">
+        <div class="reviews-score">5,0 ★★★★★</div>
+        <div class="reviews-meta">
+          +352 avaliações !✅
+        </div>
+      </div>
+      <div class="reviews-grid">
+        <div class="review-card">
+          <div class="review-avatar">
+            <img src="https://randomuser.me/api/portraits/men/12.jpg" alt="Carlos M">
+          </div>
+          <div class="review-content">
+            <div class="review-author">Carlos M</div>
+            <div class="review-stars">★★★★★</div>
+            <div class="review-text">Sempre perfeita: a comida é deliciosa, bem servida, quentinha e entrega super rápida. Recomendo sempre!</div>
+          </div>
+        </div>
+        <div class="review-card">
+          <div class="review-avatar">
+            <img src="https://randomuser.me/api/portraits/women/13.jpg" alt="Maria F">
+          </div>
+          <div class="review-content">
+            <div class="review-author">Maria F</div>
+            <div class="review-stars">★★★★★</div>
+            <div class="review-text">A qualidade e o sabor são excepcionais. Adoro a variedade de opções e sempre chega rápido.</div>
+          </div>
+        </div>
+        <div class="review-card">
+          <div class="review-avatar">
+            <img src="https://randomuser.me/api/portraits/men/56.jpg" alt="João L">
+          </div>
+          <div class="review-content">
+            <div class="review-author">João L</div>
+            <div class="review-stars">★★★★★</div>
+            <div class="review-text">Muito bom! Marmita bem temperada, com porções generosas e sempre fresquinha. Super recomendo!</div>
+          </div>
+        </div>
+        <div class="review-card">
+          <div class="review-avatar">
+            <img src="https://randomuser.me/api/portraits/women/22.jpg" alt="Luana P">
+          </div>
+          <div class="review-content">
+            <div class="review-author">Luana P</div>
+            <div class="review-stars">★★★★★</div>
+            <div class="review-text">Adoro! Sempre que eu estou com pressa, eles são minha primeira escolha. Entrega no horário e comida maravilhosa!</div>
+          </div>
+        </div>
+        <div class="review-card">
+          <div class="review-avatar">
+            <img src="https://randomuser.me/api/portraits/men/76.jpg" alt="Roberto V">
+          </div>
+          <div class="review-content">
+            <div class="review-author">Roberto V</div>
+            <div class="review-stars">★★★★★</div>
+            <div class="review-text">Muito bom! Preço justo, excelente qualidade e sempre em tempo. Amei a promoção 2x1!</div>
+          </div>
+        </div>
+        <div class="review-card">
+          <div class="review-avatar">
+            <img src="https://randomuser.me/api/portraits/women/45.jpg" alt="Fernanda S">
+          </div>
+          <div class="review-content">
+            <div class="review-author">Fernanda S</div>
+            <div class="review-stars">★★★★★</div>
+            <div class="review-text">Atendimento excelente, entrega rápida e comida deliciosa. Recomendo demais!</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <footer>
+      <div style="display: flex; align-items: center;">
+        <p>© Marmitaria Express | + de 460 cozinhas industriais espalhadas pelo <span class="country">Brasil !
+            <img src="https://flagcdn.com/w20/br.png" srcset="https://flagcdn.com/w40/br.png 2x" alt="Brazil"></span>
+        </p>
+      </div>
+      <div style="display: flex; gap: 8px; align-items: center;">
+        <div>Google Rating 4.8 ⭐ • 1.2k pedidos. | </div>
+        <div class="kicker">Entrega em até 35 min</div>
+      </div>
+    </footer>
+  </div>
+
+  <div id="overlay" class="overlay" style="display:none">
+    <div class="loader"></div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
+</html>
