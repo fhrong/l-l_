@@ -34,7 +34,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const bairroInput = $('bairroInput');
   const cpfCheck = $('cpfCheck');
   const cpfInput = $('cpfInput');
-  const checkoutBtn = $('checkoutBtn');
+
 
   // A single source of truth where the order flow must live (created after result card)
   function ensureOrderMount() {
@@ -425,28 +425,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function validateCPF(cpf){ cpf = (cpf||'').replace(/\D/g,''); if (cpf.length!==11 || /^(\d)\1+$/.test(cpf)) return false; let sum=0,rest; for(let i=1;i<=9;i++) sum+=parseInt(cpf.substring(i-1,i))*(11-i); rest=(sum*10)%11; if(rest===10||rest===11)rest=0; if(rest!==parseInt(cpf.substring(9,10)))return false; sum=0; for(let i=1;i<=10;i++) sum+=parseInt(cpf.substring(i-1,i))*(12-i); rest=(sum*10)%11; if(rest===10||rest===11)rest=0; if(rest!==parseInt(cpf.substring(10,11)))return false; return true; }
 
-  if (checkoutBtn) {
-    checkoutBtn.addEventListener('click', (e)=>{
-      let valid = true;
-      if (nomeInput && !nomeInput.value.trim()) { nomeInput.style.borderColor='red'; valid=false; } else if (nomeInput) nomeInput.style.borderColor='';
-      if (cepInput) {
-        if (!cepInput.value.trim() || (cepError && cepError.style.display==='block')) { cepInput.style.borderColor='red'; valid=false; }
-        else cepInput.style.borderColor='';
-      }
-      if (ruaInput && !ruaInput.value.trim()) { ruaInput.style.borderColor='red'; valid=false; } else if (ruaInput) ruaInput.style.borderColor='';
-      if (numeroInput && !numeroInput.value.trim()) { numeroInput.style.borderColor='red'; valid=false; } else if (numeroInput) numeroInput.style.borderColor='';
-      if (bairroInput && !bairroInput.value.trim()) { bairroInput.style.borderColor='red'; valid=false; } else if (bairroInput) bairroInput.style.borderColor='';
-      if (cpfCheck && cpfCheck.checked) {
-        if (!cpfInput.value.trim() || !validateCPF(cpfInput.value)) { cpfInput.style.borderColor='red'; valid=false; } else cpfInput.style.borderColor='';
-      }
-      if (phoneInput) {
-        const p = phoneInput.value.replace(/\D/g,'');
-        if (!p || !isValidBrazilianPhone(p)) { phoneInput.style.borderColor='red'; if (phoneError) phoneError.style.display='block'; valid=false; }
-        else { phoneInput.style.borderColor=''; if (phoneError) phoneError.style.display='none'; }
-      }
-      if (!valid) { e.preventDefault(); alert('Por favor, corrija os campos destacados.'); return false; }
-    });
-  }
+  
 
   // Creates & shows a small disclaimer modal; respects "don't show again"
   function showDisclaimerPopup() {

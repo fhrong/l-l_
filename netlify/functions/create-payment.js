@@ -1,74 +1,48 @@
 const fetch = globalThis.fetch;
 
-
-exports.handler = async function(event, context) {
+exports.handler = async (event) => {
   try {
-    if (event.httpMethod !== 'POST') {
-      return {
-        statusCode: 405,
-        body: JSON.stringify({ error: 'Método não permitido' }),
-      };
+    if (event.httpMethod !== "POST") {
+      return { statusCode: 405, body: "Método não permitido" };
     }
 
     const body = JSON.parse(event.body);
 
-    // Substitua pelas suas chaves reais (use variáveis de ambiente no Netlify)
-    const API_KEY = process.env.DLOCAL_API_KEY;
-    const API_SECRET = process.env.DLOCAL_API_SECRET;
+    const resp = await fetch("https://api.mercadopago.com/checkout/preferences", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${process.env.MP_ACCESS_TOKEN}`, // Access Token definido no Netlify
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        items: [
+          {
+            title: body.description,
+            quantity: 1,
+            currency_id: "BRL",
+            unit_price: body.amount / 100, // volta de centavos para reais
+          }
+        ],
+        back_urls: {
+          success: process.env.SUCCESS_URL,
+          failure: process.env.BACK_URL,
+          pending: process.env.BACK_URL,
+        },
+        auto_return: "approved",
+      }),
+    });
 
-    if (!API_KEY || !API_SECRET) {
-      return {
-        statusCode: 500,
-        body: JSON.stringify({ error: 'Credenciais da API não configuradas' }),
-      };
-    }
+    const data = await resp.json();
 
-const API_URL = process.env.DLOCAL_ENV === "sandbox"
-  ? "https://api-sbx.dlocalgo.com/v1/payments"
-  : "https://api.dlocalgo.com/v1/payments";
-
-const dlocalResponse = await fetch(API_URL, {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json',
-    'Authorization': `Bearer ${API_KEY}:${API_SECRET}`,
-  },
-  body: JSON.stringify({
-    currency: 'BRL',
-    amount: Math.round(body.amount * 100),
-    country: 'BR',
-    order_id: body.order_id,
-    description: `Pedido ${body.order_id} - Marmitaria Express`,
-    success_url: process.env.SUCCESS_URL || 'https://example.com/success',
-    back_url: process.env.BACK_URL || 'https://example.com/',
-    notification_url: body.notification_url,
-    payer: body.payer,
-  }),
-});
-
-
-    const responseData = await dlocalResponse.json();
-
-    if (!dlocalResponse.ok) {
-      console.error('Erro da DLocal:', responseData);
-      return {
-        statusCode: dlocalResponse.status,
-        body: JSON.stringify({ error: responseData.message || 'Erro ao criar pagamento' }),
-      };
+    if (!resp.ok) {
+      return { statusCode: resp.status, body: JSON.stringify(data) };
     }
 
     return {
       statusCode: 200,
-      body: JSON.stringify({
-        redirect_url: responseData.redirect_url,
-      }),
+      body: JSON.stringify({ init_point: data.init_point }),
     };
-
-  } catch (error) {
-    console.error('Erro interno:', error);
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ error: 'Erro interno no servidor' }),
-    };
+  } catch (err) {
+    return { statusCode: 500, body: JSON.stringify({ error: err.message }) };
   }
 };
