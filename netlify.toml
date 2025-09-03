@@ -1,0 +1,16 @@
+[build]
+  functions = "netlify/functions"
+  publish = "dist" # Altere para "build" ou "public" conforme o seu projeto estático
+
+[dev]
+  functions = "netlify/functions"
+  publish = "dist" # Certifique-se de refletir aqui o mesmo caminho do [build]
+
+[functions]
+  node_bundler = "esbuild" # Melhor performance e suporte para ESModules
+
+# Opcional: redirecionamentos se estiver usando rotas dinâmicas no SPA
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
