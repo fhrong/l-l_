@@ -23,24 +23,29 @@ exports.handler = async function(event, context) {
       };
     }
 
-    const dlocalResponse = await fetch('https://api-sbx.dlocalgo.com/v1/payments', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${API_KEY}:${API_SECRET}`,
-      },
-      body: JSON.stringify({
-        currency: 'BRL',
-        amount: Math.round(body.amount * 100), // DLocal espera o valor em centavos
-        country: 'BR',
-        order_id: body.order_id,
-        description: `Pedido ${body.order_id} - Marmitaria Express`,
-        success_url: `${process.env.SUCCESS_URL || 'https://example.com/success'}`,
-        back_url: `${process.env.BACK_URL || 'https://example.com/'}`,
-        notification_url: body.notification_url,
-        payer: body.payer,
-      }),
-    });
+const API_URL = process.env.DLOCAL_ENV === "sandbox"
+  ? "https://api-sbx.dlocalgo.com/v1/payments"
+  : "https://api.dlocalgo.com/v1/payments";
+
+const dlocalResponse = await fetch(API_URL, {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${API_KEY}:${API_SECRET}`,
+  },
+  body: JSON.stringify({
+    currency: 'BRL',
+    amount: Math.round(body.amount * 100),
+    country: 'BR',
+    order_id: body.order_id,
+    description: `Pedido ${body.order_id} - Marmitaria Express`,
+    success_url: process.env.SUCCESS_URL || 'https://example.com/success',
+    back_url: process.env.BACK_URL || 'https://example.com/',
+    notification_url: body.notification_url,
+    payer: body.payer,
+  }),
+});
+
 
     const responseData = await dlocalResponse.json();
 
