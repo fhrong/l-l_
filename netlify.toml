@@ -7,14 +7,12 @@
   publish = "dist" # Certifique-se de refletir aqui o mesmo caminho do [build]
 
 [functions]
-  node_bundler = "esbuild" # Melhor performance e suporte para ESModules
+  node_bundler = "esbuild"
+  # Se realmente precisar manter node-fetch como externo, deixe aqui:
+  external_node_modules = ["node-fetch"]
 
 # Opcional: redirecionamentos se estiver usando rotas dinâmicas no SPA
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
-
-[functions]
-  node_bundler = "esbuild"
-  external_node_modules = ["node-fetch"]
