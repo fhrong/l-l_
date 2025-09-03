@@ -279,23 +279,41 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Promo timer
-  (function startPromoCountdown(minutes){
-    const minEl = $('promoMinutes'), secEl = $('promoSeconds');
-    if (!minEl || !secEl) return;
-    let secs = Math.max(0, Math.floor(minutes*60));
-    function tick(){
-      const m = String(Math.floor(secs/60)).padStart(2,'0');
-      const s = String(secs%60).padStart(2,'0');
-      minEl.textContent = m; secEl.textContent = s;
-      secs--;
-      if (secs < 0) {
-        // reinicia o contador quando terminar
-        secs = Math.max(0, Math.floor(minutes*60));
-      }
-      setTimeout(tick, 1000);
+  (function startPromoCountdown(minutes) {
+  const minEl = $('promoMinutes'), secEl = $('promoSeconds');
+  if (!minEl || !secEl) return;
+
+  const PROMO_KEY = 'promoCountdownEndTime';
+  const now = Date.now();
+  let endTime = parseInt(localStorage.getItem(PROMO_KEY), 10);
+
+  if (!endTime || isNaN(endTime) || endTime < now) {
+    // Timer not started or expired, set new one
+    endTime = now + minutes * 60 * 1000;
+    localStorage.setItem(PROMO_KEY, endTime.toString());
+  }
+
+  function tick() {
+    const now = Date.now();
+    let remaining = Math.max(0, Math.floor((endTime - now) / 1000));
+
+    const m = String(Math.floor(remaining / 60)).padStart(2, '0');
+    const s = String(remaining % 60).padStart(2, '0');
+    minEl.textContent = m;
+    secEl.textContent = s;
+
+    if (remaining <= 0) {
+      // Restart timer if you want it to be cyclic
+      endTime = Date.now() + minutes * 60 * 1000;
+      localStorage.setItem(PROMO_KEY, endTime.toString());
     }
-    tick();
-  })(45);
+
+    setTimeout(tick, 1000);
+  }
+
+  tick();
+})(45); // 45 minutes
+
 
   // Search handling
   function simulateSearch(e){
