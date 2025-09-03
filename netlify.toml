@@ -1,15 +1,13 @@
 [build]
   functions = "netlify/functions"
-  publish = "dist" # Altere para "build" ou "public" conforme o seu projeto estático
+  publish = "." # raiz, já que o index.html está direto na root
 
 [dev]
   functions = "netlify/functions"
-  publish = "dist" # Certifique-se de refletir aqui o mesmo caminho do [build]
+  publish = "." # igual ao [build]
 
 [functions]
   node_bundler = "esbuild"
-  # Se realmente precisar manter node-fetch como externo, deixe aqui:
-  external_node_modules = ["node-fetch"]
 
 # Opcional: redirecionamentos se estiver usando rotas dinâmicas no SPA
 [[redirects]]
