@@ -1,4 +1,166 @@
 document.addEventListener('DOMContentLoaded', () => {
+  // Aguarda até que estadosData esteja carregado e selects estejam prontos
+  function waitForStatesAndSelects() {
+    return new Promise(resolve => {
+      const check = () => {
+        if (estadosData.length && stateSelect && citySelect) resolve();
+        else setTimeout(check, 50);
+      };
+      check();
+    });
+  }
+
+  // Helpers: normaliza strings (remove acentos, deixa minúsculo)
+function normalizeStr(s){
+  return (s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+}
+
+// Tenta extrair a sigla do state retornado pelo Nominatim usando estadosData
+function siglaFromNominatimAddress(address) {
+  if (!address) return null;
+  if (address.state_code && address.state_code.length === 2) return address.state_code.toUpperCase();
+  // ISO codes às vezes aparecem como "BR-SP"
+  if (address['ISO3166-2']) {
+    const parts = address['ISO3166-2'].split('-');
+    if (parts.length === 2) return parts[1].toUpperCase();
+  }
+  const stateName = address.state || address.region || '';
+  if (!stateName) return null;
+  const norm = normalizeStr(stateName);
+  // procura por correspondência exata ou parcial no estadosData
+  let found = estadosData.find(e => normalizeStr(e.nome) === norm || normalizeStr(e.sigla) === norm);
+  if (found) return found.sigla;
+  found = estadosData.find(e => normalizeStr(e.nome).includes(norm) || norm.includes(normalizeStr(e.nome)));
+  return found ? found.sigla : null;
+}
+
+async function autoFillLocation() {
+  if (!navigator.geolocation) {
+    console.warn('Geolocation não disponível no browser.');
+    return;
+  }
+
+  navigator.geolocation.getCurrentPosition(async pos => {
+    const { latitude, longitude } = pos.coords;
+    try {
+      // NÃO tente setar o header User-Agent aqui (navegador bloqueia).
+      const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&addressdetails=1&accept-language=pt-BR`;
+      const resp = await fetch(url);
+      if (!resp.ok) throw new Error('Nominatim retorno: ' + resp.status);
+      const data = await resp.json();
+      console.log('Nominatim response:', data);
+
+      if (!data.address) return;
+
+      // garante que estadosData e selects estejam prontos
+      await waitForStatesAndSelects();
+
+      // Estado: tenta extrair sigla e setar o select
+      const sigla = siglaFromNominatimAddress(data.address);
+      if (sigla && stateSelect) {
+        const optionExists = Array.from(stateSelect.options).some(o => o.value === sigla);
+        if (optionExists) {
+          stateSelect.value = sigla;
+          stateSelect.dispatchEvent(new Event('change', { bubbles: true }));
+          console.log('Estado preenchido:', sigla);
+        } else {
+          console.warn('Sigla encontrada não existe nas opções do select:', sigla);
+        }
+      }
+
+      // Cidade: pega o melhor campo disponível
+      const cityFields = ['city','town','village','municipality','county','hamlet','locality','suburb','city_district'];
+      let cidade = '';
+      for (const f of cityFields) {
+        if (data.address[f]) { cidade = data.address[f]; break; }
+      }
+      if (!cidade && data.display_name) {
+        cidade = data.display_name.split(',')[0];
+      }
+      if (!cidade) return;
+
+      const normCidade = normalizeStr(cidade);
+      // Aguarda as cidades serem populadas (populateCities é chamado no change do estado)
+      let tentativas = 0;
+      const trySetCity = () => {
+        if (!citySelect) return;
+        if (citySelect.disabled || citySelect.options.length <= 1) {
+          if (tentativas++ < 20) return setTimeout(trySetCity, 150);
+          console.warn('Opções de cidade não preenchidas em tempo para auto-fill.');
+          return;
+        }
+        // compara normalizado
+        for (const opt of citySelect.options) {
+          if (normalizeStr(opt.value) === normCidade) {
+            citySelect.value = opt.value;
+            citySelect.dispatchEvent(new Event('change', { bubbles: true }));
+            console.log('Cidade preenchida (exact):', opt.value);
+            return;
+          }
+        }
+        // tentativa por inclusão parcial (ex: "sao paulo" vs "são paulo - centro")
+        for (const opt of citySelect.options) {
+          const normOpt = normalizeStr(opt.value);
+          if (normOpt.includes(normCidade) || normCidade.includes(normOpt)) {
+            citySelect.value = opt.value;
+            citySelect.dispatchEvent(new Event('change', { bubbles: true }));
+            console.log('Cidade preenchida (partial):', opt.value);
+            return;
+          }
+        }
+        console.warn('Cidade não encontrada entre as opções do select:', cidade);
+      };
+      trySetCity();
+
+    } catch (e) {
+      console.error('Erro ao preencher localização automática:', e);
+      // fallback via IP (opcional): tenta ipapi.co se Nominatim falhar
+      try {
+        const r2 = await fetch('https://ipapi.co/json/');
+        if (r2.ok) {
+          const ipd = await r2.json();
+          console.log('Fallback ipapi:', ipd);
+          await waitForStatesAndSelects();
+          if (ipd.region_code && stateSelect) {
+            const regionCode = ipd.region_code.toUpperCase();
+            if (Array.from(stateSelect.options).some(o => o.value === regionCode)) {
+              stateSelect.value = regionCode;
+              stateSelect.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+          }
+          const cityFromIp = ipd.city || ipd.region;
+          if (cityFromIp) {
+            // tenta setar cidade com mesma função de busca
+            const normCidade = normalizeStr(cityFromIp);
+            let tent = 0;
+            const tryCityIp = () => {
+              if (!citySelect) return;
+              if (citySelect.disabled || citySelect.options.length <= 1) {
+                if (tent++ < 20) return setTimeout(tryCityIp, 150);
+                return;
+              }
+              for (const opt of citySelect.options) {
+                if (normalizeStr(opt.value) === normCidade || normalizeStr(opt.value).includes(normCidade) || normCidade.includes(normalizeStr(opt.value))) {
+                  citySelect.value = opt.value;
+                  citySelect.dispatchEvent(new Event('change', { bubbles: true }));
+                  return;
+                }
+              }
+            };
+            tryCityIp();
+          }
+        }
+      } catch (err2) {
+        console.error('Fallback por IP também falhou:', err2);
+      }
+    }
+  }, err => {
+    console.warn('Geolocalização não permitida ou falhou:', err);
+  }, { timeout: 10000, maximumAge: 5 * 60 * 1000 });
+}
+
+
+
   // Helper
   const $ = id => document.getElementById(id);
 
@@ -74,7 +236,10 @@ document.addEventListener('DOMContentLoaded', () => {
   // Init: load states/cities
   fetch('citys.json').then(r => r.json()).then(json => {
     estadosData = json.estados || [];
-    if (stateSelect) initStateOptions();
+    if (stateSelect) {
+      initStateOptions();
+      autoFillLocation();
+    }
   }).catch(e => console.error('Erro citys.json', e));
 
   function initStateOptions() {
@@ -435,7 +600,7 @@ document.addEventListener('DOMContentLoaded', () => {
     popup.innerHTML = `
       <div class="card" role="dialog" aria-modal="true" aria-labelledby="disclaimerTitle">
         <h4 id="disclaimerTitle">✅ Aviso !</h4>
-        <p>Imagens ilustrativas — a apresentação do produto pode variar, mas garantimos a mesma qualidade e quantidade!</p>
+        <p>Para essa promoção em uma das nossas cozinhas industriais mais próximas de você, é possível selecionar apenas um combo de 2x1 por vez !</p>
         <div style="display:flex;align-items:center;gap:8px;margin-top:6px;">
           <label class="dontshow"><input type="checkbox" id="dontShowDisclaimer"> Não mostrar novamente</label>
         </div>

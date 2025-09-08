@@ -127,10 +127,10 @@ input[type="tel"]{
   width:100%;
   padding:12px 14px;
   border-radius:8px;
-  background:rgba(255,255,255,0.06);
+  background:rgba(255,0,0,0.03);
   color:inherit;
   font-size:15px;
-  border:1px solid #1a2332;
+  border:1px solid #b23a3a;
   margin-top:2px;
   transition:border var(--transition), box-shadow var(--transition);
   outline:none;
@@ -358,10 +358,10 @@ footer{
   padding:12px;
   border-radius:8px;
   font-size:1rem;
-  border:1.5px solid #1a2332;
+  border:1.5px solid #b23a3a;
   margin-bottom:6px;
-  background:rgba(255,255,255,0.06);
-  color:#fff;
+  background:rgba(255,0,0,0.03);
+  color:#b23a3a;
   transition:border 0.18s;
   max-width:100%;
 }
