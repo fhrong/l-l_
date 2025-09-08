@@ -58,9 +58,9 @@ document.addEventListener('DOMContentLoaded', () => {
   // Data
   const marmitas = [
     { id: 'm1', name: 'Feijoada - M', desc: 'Feijoada completa com carnes selecionadas, acompanhada de arroz, farofa e couve.', img: 'imagens/feijoada.webp' },
-    { id: 'm2', name: 'Bisteca - M', desc: 'Bisteca suína grelhada, servida com arroz, feijão, farofa e salada fresca.', img: 'imagens/bisteca.webp' },
-    { id: 'm3', name: 'Filé de Frango - M', desc: 'Filé de frango grelhado, acompanhado de arroz, feijão, batata frita e salada.', img: 'imagens/filedefrango.webp' },
-    { id: 'm4', name: 'Alcatra - M', desc: 'Alcatra bovina assada lentamente, servida com arroz, feijão, farofa e vinagrete.', img: 'imagens/alcatra.webp' }
+    { id: 'm2', name: 'Bisteca - M', desc: 'Bisteca suína grelhada, servida com arroz, feijão, abóbora e fritas deliciosas.', img: 'imagens/bisteca.webp' },
+    { id: 'm3', name: 'Filé de Frango - M', desc: 'Filé de frango grelhado, acompanhado de arroz, feijão, batata frita e chuchu.', img: 'imagens/filedefrango.webp' },
+    { id: 'm4', name: 'Alcatra - M', desc: 'Alcatra bovina assada, servida com arroz, feijão, chuchu e fritas.', img: 'imagens/alcatra.webp' }
   ];
   const extras = [{ id:'e1',name:'Arroz',price:2.5},{id:'e2',name:'Farofa',price:1.5},{id:'e3',name:'Ovo frito',price:3.0 }];
   const bebidas = [{ id:'b0',name:'Sem bebida',price:0},{id:'b1',name:'Refrigerante 350ml',price:4.5},{id:'b2',name:'Suco natural 300ml',price:6.0 }];
