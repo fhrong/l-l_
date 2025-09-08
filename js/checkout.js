@@ -7,9 +7,13 @@ document.addEventListener('DOMContentLoaded', () => {
   checkoutBtn.addEventListener('click', async (e) => {
     e.preventDefault();
 
+    const orderId = 'order_' + Date.now();
+
     const payload = {
-      amount: parseFloat(orderTotal.textContent.replace(/[^0-9,]/g, '').replace(',', '.')) * 100, // em centavos
-      description: "Promoção 2 marmitas"
+      amount: parseFloat(orderTotal.textContent.replace(/[^0-9,]/g, '').replace(',', '.')) * 100,
+      description: "Promoção 2 marmitas",
+      notification_url: "https://marmexp.netlify.app/webhook/mercadopago",
+      external_reference: orderId
     };
 
     const resp = await fetch('/.netlify/functions/create-payment', {
@@ -25,7 +29,6 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    // Redireciona para o checkout do Mercado Pago
     window.location.href = init_point;
   });
 });

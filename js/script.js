@@ -545,8 +545,13 @@ async function autoFillLocation() {
 
   // Address/CEP/phone/CPF logic
   if (cepInput) {
+    cepInput.style.borderColor = '';
+    cepInput.addEventListener('input', () => {
+      if (cepError) { cepError.style.display = 'none'; cepInput.style.borderColor = ''; }
+    });
     cepInput.addEventListener('blur', () => {
       const cep = cepInput.value.replace(/\D/g,'');
+      if (!cep) { if (cepError) { cepError.style.display='none'; cepInput.style.borderColor=''; } return; }
       if (cep.length !== 8) { if (cepError) { cepError.textContent='CEP inválido.'; cepError.style.display='block'; cepInput.style.borderColor='red'; } return; }
       fetch(`https://viacep.com.br/ws/${cep}/json/`).then(r=>r.json()).then(data=>{
         if (data.erro) { if (cepError){cepError.textContent='CEP não encontrado.';cepError.style.display='block';cepInput.style.borderColor='red';} return; }
@@ -562,14 +567,17 @@ async function autoFillLocation() {
   }
 
   if (phoneInput) {
+    phoneInput.style.borderColor = '';
     phoneInput.addEventListener('input', (e)=>{
       let v = e.target.value.replace(/\D/g,'').slice(0,11);
       if (v.length <= 10) v = v.replace(/^(\d{2})(\d{4})(\d{0,4})$/,'($1) $2-$3');
       else v = v.replace(/^(\d{2})(\d{5})(\d{0,4})$/,'($1) $2-$3');
       e.target.value = v.trim();
+      if (phoneError) { phoneError.style.display = 'none'; phoneInput.style.borderColor = ''; }
     });
     phoneInput.addEventListener('blur', ()=>{
       const p = phoneInput.value.replace(/\D/g,'');
+      if (!p) { if (phoneError) { phoneError.style.display='none'; phoneInput.style.borderColor=''; } return; }
       if (!isValidBrazilianPhone(p)) { if (phoneError){ phoneError.style.display='block'; phoneInput.style.borderColor='red'; } }
       else { if (phoneError){ phoneError.style.display='none'; phoneInput.style.borderColor=''; } }
     });

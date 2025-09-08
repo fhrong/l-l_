@@ -358,10 +358,10 @@ footer{
   padding:12px;
   border-radius:8px;
   font-size:1rem;
-  border:1.5px solid #b23a3a;
+  border:1.5px solid #ccc;
   margin-bottom:6px;
-  background:rgba(255,0,0,0.03);
-  color:#b23a3a;
+  background:#181c22;
+  color:#fff;
   transition:border 0.18s;
   max-width:100%;
 }
