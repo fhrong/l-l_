@@ -12,7 +12,7 @@ export async function handler(event, context) {
     console.log("Webhook recebido:", body);
 
     // Dados Evolution API
-    const API_URL = "https://evolution-api-ny08.onrender.com/message/sendText/marmexp";
+    const API_URL = "https://evolution-api-ny08.onrender.com/message/sendText/japacenter";
     const API_TOKEN = "91910192";
 
     // Mensagem a ser enviada
