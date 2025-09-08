@@ -1,3 +1,56 @@
+/* Banner de status aberto com bolinha verde piscando */
+.open-status-banner {
+  width: 100%;
+  margin-bottom: 8px;
+}
+.open-status {
+  display: inline-flex;
+  align-items: center;
+  background: #b5ffb5;
+  color: #1a7f37;
+  font-weight: 800;
+  font-size: 1.1rem;
+  border-radius: 18px;
+  padding: 7px 22px 7px 14px;
+  box-shadow: 0 2px 8px 0 rgba(34,197,94,0.09);
+  letter-spacing: 0.5px;
+  border: 2px solid #8ff6a7;
+  gap: 10px;
+}
+.open-dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #00ff95;
+  margin-right: 7px;
+  box-shadow: 0 0 8px 2px #34d05855;
+  animation: open-blink 1s steps(2, start) infinite;
+  display: inline-block;
+}
+@keyframes open-blink {
+  to { opacity: 0.2; }
+}
+/* Banner piscando no topo */
+.blinking-banner {
+  width: 100%;
+  margin-bottom: 8px;
+}
+.blinking {
+  display: inline-block;
+  padding: 8px 22px;
+  background: #fffbe6;
+  color: #d7263d;
+  font-weight: 800;
+  font-size: 1.1rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px 0 rgba(255,107,0,0.09);
+  animation: blink 1s steps(2, start) infinite;
+  border: 2px solid #ffd700;
+  letter-spacing: 0.5px;
+}
+@keyframes blink {
+  to { visibility: hidden; }
+}
 /* Footer rating fix: impede quebra de linha entre nota e estrela */
 .footer-rating {
   white-space: nowrap;
