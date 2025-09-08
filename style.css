@@ -1,3 +1,8 @@
+/* Footer rating fix: impede quebra de linha entre nota e estrela */
+.footer-rating {
+  white-space: nowrap;
+  display: inline-block;
+}
 :root{
   --bg:#0f1720;
   --card:#0b1220;
@@ -263,10 +268,15 @@ footer{
   padding-top:18px;
   border-top:1px solid rgba(255,255,255,0.06);
   display:flex;
+  flex-wrap:wrap;
   justify-content:space-between;
   align-items:center;
   font-size:14px;
   color:var(--muted);
+  gap: 12px;
+}
+.footer-rating {
+  white-space: nowrap;
 }
 
 /* Overlay e loader */
@@ -388,7 +398,13 @@ footer{ order:4; }
   .marmita img{ max-width:400px; margin:0 auto; }
   .line.total{ flex-direction:column; align-items:stretch; }
   .line.total .btn, .line.total > div{ width:100%; text-align:center; }
-  footer{ flex-direction:column; gap:8px; font-size:13px; }
+  footer{
+    flex-direction:column;
+    align-items:flex-start;
+    gap:10px;
+    font-size:13px;
+    text-align:left;
+  }
   .promo-timer-box{ padding:18px 6vw; }
   .promo-timer-countdown{ gap:16px; }
   .reviews-grid{ grid-template-columns:1fr; gap:10px; }
