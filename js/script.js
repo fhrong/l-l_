@@ -325,31 +325,88 @@ document.addEventListener('DOMContentLoaded', () => {
     container.id = 'perMarmitaExtrasBox';
     container.style.margin = '24px 0 18px 0';
     container.innerHTML = '<h3>Adicionais por marmita</h3>';
+    // Responsive style for mobile: stack extras vertically, readable text
+    const styleId = 'perMarmitaExtrasResponsiveStyle';
+    if (!document.getElementById(styleId)) {
+      const style = document.createElement('style');
+      style.id = styleId;
+      style.textContent = `
+        @media (max-width: 540px) {
+          #perMarmitaExtrasBox .marmita-extras-row {
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            gap: 8px !important;
+          }
+          #perMarmitaExtrasBox .marmita-extras-chips {
+            flex-direction: column !important;
+            align-items: stretch !important;
+            width: 100%;
+            gap: 8px !important;
+          }
+          #perMarmitaExtrasBox .marmita-extras-chip {
+            min-width: 0;
+            width: 100%;
+            text-align: center;
+            font-size: 1em;
+            white-space: normal;
+            padding: 8px 0;
+          }
+          #perMarmitaExtrasBox img {
+            width: 40px !important;
+            height: 40px !important;
+          }
+        }
+        #perMarmitaExtrasBox .marmita-extras-row {
+          display: flex;
+          align-items: center;
+          gap: 14px;
+          margin-bottom: 10px;
+        }
+        #perMarmitaExtrasBox .marmita-extras-chips {
+          display: flex;
+          gap: 8px;
+        }
+        #perMarmitaExtrasBox .marmita-extras-chip {
+          background: #1a2336;
+          color: #fff;
+          border-radius: 10px;
+          padding: 8px 12px;
+          font-weight: 600;
+          font-size: 1.05em;
+          cursor: pointer;
+          transition: background 0.15s;
+          box-shadow: 0 1px 4px #0001;
+          margin: 0;
+          white-space: pre-line;
+        }
+        #perMarmitaExtrasBox .marmita-extras-chip.selected {
+          background: #ffb43a;
+          color: #222;
+        }
+      `;
+      document.head.appendChild(style);
+    }
     selectedMarmitas.forEach(mId => {
       const m = marmitas.find(x => x.id === mId);
       const mDiv = document.createElement('div');
-      mDiv.style.display = 'flex';
-      mDiv.style.alignItems = 'center';
-      mDiv.style.gap = '14px';
-      mDiv.style.marginBottom = '10px';
-      mDiv.innerHTML = `<img src="${m.img}" alt="" style="width:48px;height:48px;object-fit:cover;border-radius:8px;box-shadow:0 2px 8px #0002;"> <span style="font-weight:600;">${m.name}</span>`;
+      mDiv.className = 'marmita-extras-row';
+      mDiv.innerHTML = `<img src="${m.img}" alt=""> <span style="font-weight:600;">${m.name}</span>`;
       // Extras chips
       const chips = document.createElement('div');
-      chips.style.display = 'inline-flex';
-      chips.style.gap = '8px';
+      chips.className = 'marmita-extras-chips';
       if (!selectedExtrasByMarmita[mId]) selectedExtrasByMarmita[mId] = new Set();
       extras.forEach(e => {
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = 'chip';
-        btn.textContent = `${e.name} +${formatCurrency(e.price)}`;
-        if (selectedExtrasByMarmita[mId].has(e.id)) btn.style.background = 'rgba(255,107,0,0.08)';
-        btn.addEventListener('click', () => {
-          if (selectedExtrasByMarmita[mId].has(e.id)) { selectedExtrasByMarmita[mId].delete(e.id); btn.style.background = ''; }
-          else { selectedExtrasByMarmita[mId].add(e.id); btn.style.background = 'rgba(255,107,0,0.08)'; }
+        const chip = document.createElement('div');
+        chip.className = 'marmita-extras-chip' + (selectedExtrasByMarmita[mId].has(e.id) ? ' selected' : '');
+        chip.tabIndex = 0;
+        chip.innerHTML = `<span style="display:block;font-weight:700;">${e.name}</span><span style="display:block;font-size:0.98em;">+R$ ${e.price.toFixed(2).replace('.', ',')}</span>`;
+        chip.addEventListener('click', () => {
+          if (selectedExtrasByMarmita[mId].has(e.id)) selectedExtrasByMarmita[mId].delete(e.id);
+          else selectedExtrasByMarmita[mId].add(e.id);
+          buildPerMarmitaExtras();
           updateSummary();
         });
-        chips.appendChild(btn);
+        chips.appendChild(chip);
       });
       mDiv.appendChild(chips);
       container.appendChild(mDiv);
