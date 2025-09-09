@@ -715,6 +715,17 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+
+
+  function getRandomDecimal() {
+    let num;
+    do {
+      num = +(Math.random() * (3.3 - 1.4) + 1.4).toFixed(1);
+    } while (num % 1 === 0); // repete se for número inteiro (como 2.0)
+    return num;
+  }
+
+
   // Mobile result popup
   function showMobileResultPopup(city, state) {
     let popup = $('mobileResultPopup');
@@ -728,7 +739,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <button id="closeMobileResult" style="position:absolute;top:10px;right:12px;background:none;border:0;color:#fff;font-size:20px;cursor:pointer;opacity:0.7">&times;</button>
         <div class="badge" style="margin-bottom:10px;">Unidade encontrada</div>
         <div style="font-weight:700;margin-bottom:8px;">Encontramos uma unidade em ${city}-${state}!</div>
-        <div style="color:#9aa4b2;margin-bottom:6px;">Unidade encontra-se há ${(Math.random()*2+1).toFixed(1)} km de você.</div>
+        <div style="color:#9aa4b2;margin-bottom:6px;">Unidade encontra-se há ${getRandomDecimal()} km de você.</div>
         <div style="color:#9aa4b2;margin-bottom:12px;">Seu pedido chega em aproximadamente 35 minutos.</div>
         <div class="pill" style="margin-bottom:14px;">🔥 Promo limitada</div>
         <button id="popupStartOrder" class="btn" style="width:100%;">Fazer pedido</button>
