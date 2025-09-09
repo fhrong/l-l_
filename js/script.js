@@ -1,5 +1,16 @@
+// script.js (merged & cleaned - corrigido buildExtras + extrasBox visibility)
 document.addEventListener('DOMContentLoaded', () => {
-  // Aguarda até que estadosData esteja carregado e selects estejam prontos
+  'use strict';
+
+  // Helper
+  const $ = id => document.getElementById(id);
+
+  // Normaliza strings (remove acentos, trim, lower)
+  function normalizeStr(s) {
+    return (s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+  }
+
+  // Espera estadosData e selects estarem prontos
   function waitForStatesAndSelects() {
     return new Promise(resolve => {
       const check = () => {
@@ -10,161 +21,142 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Helpers: normaliza strings (remove acentos, deixa minúsculo)
-function normalizeStr(s){
-  return (s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
-}
-
-// Tenta extrair a sigla do state retornado pelo Nominatim usando estadosData
-function siglaFromNominatimAddress(address) {
-  if (!address) return null;
-  if (address.state_code && address.state_code.length === 2) return address.state_code.toUpperCase();
-  // ISO codes às vezes aparecem como "BR-SP"
-  if (address['ISO3166-2']) {
-    const parts = address['ISO3166-2'].split('-');
-    if (parts.length === 2) return parts[1].toUpperCase();
-  }
-  const stateName = address.state || address.region || '';
-  if (!stateName) return null;
-  const norm = normalizeStr(stateName);
-  // procura por correspondência exata ou parcial no estadosData
-  let found = estadosData.find(e => normalizeStr(e.nome) === norm || normalizeStr(e.sigla) === norm);
-  if (found) return found.sigla;
-  found = estadosData.find(e => normalizeStr(e.nome).includes(norm) || norm.includes(normalizeStr(e.nome)));
-  return found ? found.sigla : null;
-}
-
-async function autoFillLocation() {
-  if (!navigator.geolocation) {
-    console.warn('Geolocation não disponível no browser.');
-    return;
+  // Tenta extrair sigla a partir do objeto address do Nominatim
+  function siglaFromNominatimAddress(address) {
+    if (!address) return null;
+    if (address.state_code && address.state_code.length === 2) return address.state_code.toUpperCase();
+    if (address['ISO3166-2']) {
+      const parts = address['ISO3166-2'].split('-');
+      if (parts.length === 2) return parts[1].toUpperCase();
+    }
+    const stateName = address.state || address.region || '';
+    if (!stateName) return null;
+    const norm = normalizeStr(stateName);
+    let found = estadosData.find(e => normalizeStr(e.nome) === norm || normalizeStr(e.sigla) === norm);
+    if (found) return found.sigla;
+    found = estadosData.find(e => normalizeStr(e.nome).includes(norm) || norm.includes(normalizeStr(e.nome)));
+    return found ? found.sigla : null;
   }
 
-  navigator.geolocation.getCurrentPosition(async pos => {
-    const { latitude, longitude } = pos.coords;
-    try {
-      // NÃO tente setar o header User-Agent aqui (navegador bloqueia).
-      const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&addressdetails=1&accept-language=pt-BR`;
-      const resp = await fetch(url);
-      if (!resp.ok) throw new Error('Nominatim retorno: ' + resp.status);
-      const data = await resp.json();
-      console.log('Nominatim response:', data);
+  // Auto-fill usando geolocalização -> Nominatim -> preenche selects
+  async function autoFillLocation() {
+    if (!navigator.geolocation) {
+      console.warn('Geolocation não disponível no browser.');
+      return;
+    }
 
-      if (!data.address) return;
-
-      // garante que estadosData e selects estejam prontos
-      await waitForStatesAndSelects();
-
-      // Estado: tenta extrair sigla e setar o select
-      const sigla = siglaFromNominatimAddress(data.address);
-      if (sigla && stateSelect) {
-        const optionExists = Array.from(stateSelect.options).some(o => o.value === sigla);
-        if (optionExists) {
-          stateSelect.value = sigla;
-          stateSelect.dispatchEvent(new Event('change', { bubbles: true }));
-          console.log('Estado preenchido:', sigla);
-        } else {
-          console.warn('Sigla encontrada não existe nas opções do select:', sigla);
-        }
-      }
-
-      // Cidade: pega o melhor campo disponível
-      const cityFields = ['city','town','village','municipality','county','hamlet','locality','suburb','city_district'];
-      let cidade = '';
-      for (const f of cityFields) {
-        if (data.address[f]) { cidade = data.address[f]; break; }
-      }
-      if (!cidade && data.display_name) {
-        cidade = data.display_name.split(',')[0];
-      }
-      if (!cidade) return;
-
-      const normCidade = normalizeStr(cidade);
-      // Aguarda as cidades serem populadas (populateCities é chamado no change do estado)
-      let tentativas = 0;
-      const trySetCity = () => {
-        if (!citySelect) return;
-        if (citySelect.disabled || citySelect.options.length <= 1) {
-          if (tentativas++ < 20) return setTimeout(trySetCity, 150);
-          console.warn('Opções de cidade não preenchidas em tempo para auto-fill.');
-          return;
-        }
-        // compara normalizado
-        for (const opt of citySelect.options) {
-          if (normalizeStr(opt.value) === normCidade) {
-            citySelect.value = opt.value;
-            citySelect.dispatchEvent(new Event('change', { bubbles: true }));
-            console.log('Cidade preenchida (exact):', opt.value);
-            return;
-          }
-        }
-        // tentativa por inclusão parcial (ex: "sao paulo" vs "são paulo - centro")
-        for (const opt of citySelect.options) {
-          const normOpt = normalizeStr(opt.value);
-          if (normOpt.includes(normCidade) || normCidade.includes(normOpt)) {
-            citySelect.value = opt.value;
-            citySelect.dispatchEvent(new Event('change', { bubbles: true }));
-            console.log('Cidade preenchida (partial):', opt.value);
-            return;
-          }
-        }
-        console.warn('Cidade não encontrada entre as opções do select:', cidade);
-      };
-      trySetCity();
-
-    } catch (e) {
-      console.error('Erro ao preencher localização automática:', e);
-      // fallback via IP (opcional): tenta ipapi.co se Nominatim falhar
+    navigator.geolocation.getCurrentPosition(async pos => {
+      const { latitude, longitude } = pos.coords;
       try {
-        const r2 = await fetch('https://ipapi.co/json/');
-        if (r2.ok) {
-          const ipd = await r2.json();
-          console.log('Fallback ipapi:', ipd);
-          await waitForStatesAndSelects();
-          if (ipd.region_code && stateSelect) {
-            const regionCode = ipd.region_code.toUpperCase();
-            if (Array.from(stateSelect.options).some(o => o.value === regionCode)) {
-              stateSelect.value = regionCode;
-              stateSelect.dispatchEvent(new Event('change', { bubbles: true }));
+        const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&addressdetails=1&accept-language=pt-BR`;
+        const resp = await fetch(url);
+        if (!resp.ok) throw new Error('Nominatim retorno: ' + resp.status);
+        const data = await resp.json();
+        console.log('Nominatim response:', data);
+
+        if (!data.address) return;
+
+        await waitForStatesAndSelects();
+
+        // Estado
+        const sigla = siglaFromNominatimAddress(data.address);
+        if (sigla && stateSelect) {
+          const optionExists = Array.from(stateSelect.options).some(o => o.value === sigla);
+          if (optionExists) {
+            stateSelect.value = sigla;
+            stateSelect.dispatchEvent(new Event('change', { bubbles: true }));
+            console.log('Estado preenchido:', sigla);
+          } else {
+            console.warn('Sigla encontrada não existe nas opções do select:', sigla);
+          }
+        }
+
+        // Cidade
+        const cityFields = ['city','town','village','municipality','county','hamlet','locality','suburb','city_district'];
+        let cidade = '';
+        for (const f of cityFields) { if (data.address[f]) { cidade = data.address[f]; break; } }
+        if (!cidade && data.display_name) cidade = data.display_name.split(',')[0];
+        if (!cidade) return;
+
+        const normCidade = normalizeStr(cidade);
+        let tentativas = 0;
+        const trySetCity = () => {
+          if (!citySelect) return;
+          if (citySelect.disabled || citySelect.options.length <= 1) {
+            if (tentativas++ < 20) return setTimeout(trySetCity, 150);
+            console.warn('Opções de cidade não preenchidas em tempo para auto-fill.');
+            return;
+          }
+          // exact match
+          for (const opt of citySelect.options) {
+            if (normalizeStr(opt.value) === normCidade) {
+              citySelect.value = opt.value;
+              citySelect.dispatchEvent(new Event('change', { bubbles: true }));
+              console.log('Cidade preenchida (exact):', opt.value);
+              return;
             }
           }
-          const cityFromIp = ipd.city || ipd.region;
-          if (cityFromIp) {
-            // tenta setar cidade com mesma função de busca
-            const normCidade = normalizeStr(cityFromIp);
-            let tent = 0;
-            const tryCityIp = () => {
-              if (!citySelect) return;
-              if (citySelect.disabled || citySelect.options.length <= 1) {
-                if (tent++ < 20) return setTimeout(tryCityIp, 150);
-                return;
+          // partial match
+          for (const opt of citySelect.options) {
+            const normOpt = normalizeStr(opt.value);
+            if (normOpt.includes(normCidade) || normCidade.includes(normOpt)) {
+              citySelect.value = opt.value;
+              citySelect.dispatchEvent(new Event('change', { bubbles: true }));
+              console.log('Cidade preenchida (partial):', opt.value);
+              return;
+            }
+          }
+          console.warn('Cidade não encontrada entre as opções do select:', cidade);
+        };
+        trySetCity();
+
+      } catch (e) {
+        console.error('Erro ao preencher localização automática:', e);
+        // fallback via IP (ipapi.co)
+        try {
+          const r2 = await fetch('https://ipapi.co/json/');
+          if (r2.ok) {
+            const ipd = await r2.json();
+            console.log('Fallback ipapi:', ipd);
+            await waitForStatesAndSelects();
+            if (ipd.region_code && stateSelect) {
+              const regionCode = ipd.region_code.toUpperCase();
+              if (Array.from(stateSelect.options).some(o => o.value === regionCode)) {
+                stateSelect.value = regionCode;
+                stateSelect.dispatchEvent(new Event('change', { bubbles: true }));
               }
-              for (const opt of citySelect.options) {
-                if (normalizeStr(opt.value) === normCidade || normalizeStr(opt.value).includes(normCidade) || normCidade.includes(normalizeStr(opt.value))) {
-                  citySelect.value = opt.value;
-                  citySelect.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+            const cityFromIp = ipd.city || ipd.region;
+            if (cityFromIp) {
+              const normCidade = normalizeStr(cityFromIp);
+              let tent = 0;
+              const tryCityIp = () => {
+                if (!citySelect) return;
+                if (citySelect.disabled || citySelect.options.length <= 1) {
+                  if (tent++ < 20) return setTimeout(tryCityIp, 150);
                   return;
                 }
-              }
-            };
-            tryCityIp();
+                for (const opt of citySelect.options) {
+                  if (normalizeStr(opt.value) === normCidade || normalizeStr(opt.value).includes(normCidade) || normCidade.includes(normalizeStr(opt.value))) {
+                    citySelect.value = opt.value;
+                    citySelect.dispatchEvent(new Event('change', { bubbles: true }));
+                    return;
+                  }
+                }
+              };
+              tryCityIp();
+            }
           }
+        } catch (err2) {
+          console.error('Fallback por IP também falhou:', err2);
         }
-      } catch (err2) {
-        console.error('Fallback por IP também falhou:', err2);
       }
-    }
-  }, err => {
-    console.warn('Geolocalização não permitida ou falhou:', err);
-  }, { timeout: 10000, maximumAge: 5 * 60 * 1000 });
-}
+    }, err => {
+      console.warn('Geolocalização não permitida ou falhou:', err);
+    }, { timeout: 10000, maximumAge: 5 * 60 * 1000 });
+  }
 
-
-
-  // Helper
-  const $ = id => document.getElementById(id);
-
-  // Elements
+  // Elements (queremos garantir que existam antes do uso)
   const stateSelect = $('state');
   const citySelect = $('city');
   const searchForm = $('searchForm');
@@ -196,28 +188,10 @@ async function autoFillLocation() {
   const bairroInput = $('bairroInput');
   const cpfCheck = $('cpfCheck');
   const cpfInput = $('cpfInput');
+  const checkoutBtn = $('checkoutBtn');
 
-
-  // A single source of truth where the order flow must live (created after result card)
-  function ensureOrderMount() {
-    if (!resultArea) return null;
-    let mount = document.getElementById('orderMount');
-    if (!mount) {
-      mount = document.createElement('div');
-      mount.id = 'orderMount'; // also doubles as scroll anchor
-      // If we have a resultCard, place after it; else append to resultArea end
-      if (resultCard && resultCard.parentElement === resultArea) {
-        resultCard.insertAdjacentElement('afterend', mount);
-      } else {
-        resultArea.appendChild(mount);
-      }
-    }
-    return mount;
-  }
-
+  // Data & state
   const PROMO_PRICE = 24.90;
-
-  // Data
   const marmitas = [
     { id: 'm1', name: 'Feijoada - M', desc: 'Feijoada completa com carnes selecionadas, acompanhada de arroz, farofa e couve.', img: 'imagens/feijoada.webp' },
     { id: 'm2', name: 'Bisteca - M', desc: 'Bisteca suína grelhada, servida com arroz, feijão, abóbora e fritas deliciosas.', img: 'imagens/bisteca.webp' },
@@ -225,19 +199,22 @@ async function autoFillLocation() {
     { id: 'm4', name: 'Alcatra - M', desc: 'Alcatra bovina assada, servida com arroz, feijão, chuchu e fritas.', img: 'imagens/alcatra.webp' }
   ];
   const extras = [{ id:'e1',name:'Arroz',price:2.5},{id:'e2',name:'Farofa',price:1.5},{id:'e3',name:'Ovo frito',price:3.0 }];
-  const bebidas = [{ id:'b0',name:'Sem bebida',price:0},{id:'b1',name:'Refrigerante 350ml',price:4.5},{id:'b2',name:'Suco natural 300ml',price:6.0 }];
+  const bebidas = [{ id:'b0',name:'Sem bebida',price:0},{id:'b1',name:'Coca Cola 2l',price:10.90},{id:'b2',name:'Suco natural 500ml',price:6.0 }];
 
-  // State
   let estadosData = [];
   let selectedMarmitas = [];
-  let selectedExtras = new Set();
+  // Per-marmita extras: { [marmitaId]: Set(extraId) }
+  let selectedExtrasByMarmita = {};
   let selectedDrink = 'b0';
+  // extras gerais
+  let selectedExtras = new Set();
 
-  // Init: load states/cities
+  // Init: load states/cities and attempt autofill
   fetch('citys.json').then(r => r.json()).then(json => {
     estadosData = json.estados || [];
     if (stateSelect) {
       initStateOptions();
+      // tenta preencher estado/cidade automaticamente
       autoFillLocation();
     }
   }).catch(e => console.error('Erro citys.json', e));
@@ -268,7 +245,7 @@ async function autoFillLocation() {
   }
   if (stateSelect) stateSelect.addEventListener('change', e => populateCities(e.target.value));
 
-  // Build UI
+  // Build UI lists
   function buildMarmitas() {
     if (!marmitasGrid) return;
     marmitasGrid.innerHTML = '';
@@ -285,48 +262,99 @@ async function autoFillLocation() {
     const idx = selectedMarmitas.indexOf(id);
     if (idx >= 0) { selectedMarmitas.splice(idx,1); div.classList.remove('selected'); }
     else {
-      if (selectedMarmitas.length >= 2) { alert('Promoção é válida para 2 marmitas apenas.'); return; }
+      if (selectedMarmitas.length >= 2) {
+        showCustomMarmitaWarning('É possível selecionar apenas 2 marmitas por combo.');
+        return;
+      }
       selectedMarmitas.push(id); div.classList.add('selected');
     }
     updateFlow();
 
-    // If user just selected the second marmita, scroll to the address form/summary
     if (selectedMarmitas.length === 2) {
-      // small timeout to allow layout/display changes to settle
-      setTimeout(() => {
-        scrollToForm();
-      }, 160);
+      setTimeout(() => scrollToForm(), 160);
+    }
+
+    // Custom warning card for over-selection of marmitas
+    function showCustomMarmitaWarning(msg) {
+      let card = document.getElementById('marmitaWarningCard');
+      if (!card) {
+        card = document.createElement('div');
+        card.id = 'marmitaWarningCard';
+        card.style.position = 'fixed';
+        card.style.top = '32px';
+        card.style.left = '50%';
+        card.style.transform = 'translateX(-50%)';
+        card.style.background = '#fffbe6';
+        card.style.color = '#d7263d';
+        card.style.fontWeight = '700';
+        card.style.fontSize = '1.1rem';
+        card.style.borderRadius = '10px';
+        card.style.padding = '16px 32px';
+        card.style.boxShadow = '0 2px 16px 0 rgba(255,107,0,0.13)';
+        card.style.zIndex = '3000';
+        card.style.border = '2px solid #ffd700';
+        card.style.letterSpacing = '0.5px';
+        card.style.transition = 'opacity 0.3s';
+        document.body.appendChild(card);
+      }
+      card.textContent = msg;
+      card.style.opacity = '1';
+      setTimeout(() => { card.style.opacity = '0'; }, 2200);
     }
   }
 
-  // Smoothly scroll to the address/summary area (prefer addressBox, fallback to summaryBox/orderMount)
   function scrollToForm() {
     const target = $('addressBox') || $('summaryBox') || $('orderMount') || $('orderFlow');
     if (!target) return;
     try {
       target.scrollIntoView({ behavior: 'smooth', block: 'center' });
     } catch (e) {
-      // fallback for older browsers
       const rect = target.getBoundingClientRect();
       window.scrollTo({ top: window.scrollY + rect.top - 80, behavior: 'smooth' });
     }
   }
 
-  function buildExtras() {
-    const list = $('extrasList'); if (!list) return; list.innerHTML = '';
-    extras.forEach(e => {
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'chip';
-      btn.textContent = `${e.name} +${formatCurrency(e.price)}`;
-      if (selectedExtras.has(e.id)) btn.style.background = 'rgba(255,107,0,0.08)';
-      btn.addEventListener('click', () => {
-        if (selectedExtras.has(e.id)) { selectedExtras.delete(e.id); btn.style.background = ''; }
-        else { selectedExtras.add(e.id); btn.style.background = 'rgba(255,107,0,0.08)'; }
-        updateSummary();
+
+  // Build per-marmita extras UI before bebidas
+  function buildPerMarmitaExtras() {
+    let container = document.getElementById('perMarmitaExtrasBox');
+    if (container) container.remove();
+    if (selectedMarmitas.length !== 2) return;
+    const bebidasBox = document.getElementById('bebidasBox');
+    container = document.createElement('div');
+    container.id = 'perMarmitaExtrasBox';
+    container.style.margin = '24px 0 18px 0';
+    container.innerHTML = '<h3>Adicionais por marmita</h3>';
+    selectedMarmitas.forEach(mId => {
+      const m = marmitas.find(x => x.id === mId);
+      const mDiv = document.createElement('div');
+      mDiv.style.display = 'flex';
+      mDiv.style.alignItems = 'center';
+      mDiv.style.gap = '14px';
+      mDiv.style.marginBottom = '10px';
+      mDiv.innerHTML = `<img src="${m.img}" alt="" style="width:48px;height:48px;object-fit:cover;border-radius:8px;box-shadow:0 2px 8px #0002;"> <span style="font-weight:600;">${m.name}</span>`;
+      // Extras chips
+      const chips = document.createElement('div');
+      chips.style.display = 'inline-flex';
+      chips.style.gap = '8px';
+      if (!selectedExtrasByMarmita[mId]) selectedExtrasByMarmita[mId] = new Set();
+      extras.forEach(e => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'chip';
+        btn.textContent = `${e.name} +${formatCurrency(e.price)}`;
+        if (selectedExtrasByMarmita[mId].has(e.id)) btn.style.background = 'rgba(255,107,0,0.08)';
+        btn.addEventListener('click', () => {
+          if (selectedExtrasByMarmita[mId].has(e.id)) { selectedExtrasByMarmita[mId].delete(e.id); btn.style.background = ''; }
+          else { selectedExtrasByMarmita[mId].add(e.id); btn.style.background = 'rgba(255,107,0,0.08)'; }
+          updateSummary();
+        });
+        chips.appendChild(btn);
       });
-      list.appendChild(btn);
+      mDiv.appendChild(chips);
+      container.appendChild(mDiv);
     });
+    bebidasBox.parentNode.insertBefore(container, bebidasBox);
   }
 
   function buildBebidas() {
@@ -346,9 +374,41 @@ async function autoFillLocation() {
     });
   }
 
+  // NOVA: buildExtras (preenche #extrasList com os extras gerais)
+  function buildExtras() {
+    const list = $('extrasList'); if (!list) return; list.innerHTML = '';
+    extras.forEach(e => {
+      const el = document.createElement('div');
+      el.className = 'chip';
+      el.textContent = `${e.name} +${formatCurrency(e.price)}`;
+      if (selectedExtras.has(e.id)) el.style.background = 'rgba(255,107,0,0.08)';
+      el.addEventListener('click', () => {
+        if (selectedExtras.has(e.id)) {
+          selectedExtras.delete(e.id);
+          el.style.background = '';
+        } else {
+          selectedExtras.add(e.id);
+          el.style.background = 'rgba(255,107,0,0.08)';
+        }
+        updateSummary();
+      });
+      list.appendChild(el);
+    });
+  }
+
   function updateFlow() {
     const show = (selectedMarmitas.length === 2);
+    // Hide old extras UI
     if (extrasBox) extrasBox.style.display = show ? 'block' : 'none';
+    if (extrasBox && !show) {
+      // when hiding, clear general selected extras UI (optional)
+      // selectedExtras.clear();
+    }
+    if (show) buildPerMarmitaExtras();
+    else {
+      const old = document.getElementById('perMarmitaExtrasBox');
+      if (old) old.remove();
+    }
     if (bebidasBox) bebidasBox.style.display = show ? 'block' : 'none';
     if (addressBox) addressBox.style.display = show ? 'block' : 'none';
     if (summaryBox) summaryBox.style.display = show ? 'block' : 'none';
@@ -361,24 +421,46 @@ async function autoFillLocation() {
     selectedMarmitas.forEach(id => {
       const m = marmitas.find(x => x.id === id);
       const ln = document.createElement('div'); ln.className = 'line';
-      ln.innerHTML = `<div>${m.name}</div><div>incluído</div>`;
+      // List additionals for this marmita
+      let extrasText = '';
+      if (selectedExtrasByMarmita[id] && selectedExtrasByMarmita[id].size) {
+        extrasText = Array.from(selectedExtrasByMarmita[id]).map(eid => {
+          const e = extras.find(x => x.id === eid);
+          return e ? e.name : '';
+        }).filter(Boolean).join(', ');
+      }
+      ln.innerHTML = `<div>${m.name}${extrasText ? ' <span style="color:#ffb43a;font-size:0.95em">+ ' + extrasText + '</span>' : ''}</div><div>incluído</div>`;
       summaryLines.appendChild(ln);
     });
     promoPriceEl.textContent = formatCurrency(PROMO_PRICE);
     let total = PROMO_PRICE;
+    // Add extras price per marmita
+    selectedMarmitas.forEach(id => {
+      if (selectedExtrasByMarmita[id]) {
+        selectedExtrasByMarmita[id].forEach(eid => {
+          const e = extras.find(x => x.id === eid);
+          if (e) total += e.price;
+        });
+      }
+    });
+    // Add general extras
+    if (selectedExtras && selectedExtras.size) {
+      selectedExtras.forEach(eid => {
+        const e = extras.find(x => x.id === eid);
+        if (e) {
+          const ln = document.createElement('div'); ln.className = 'line';
+          ln.innerHTML = `<div>${e.name}</div><div>${formatCurrency(e.price)}</div>`;
+          summaryLines.appendChild(ln);
+          total += e.price;
+        }
+      });
+    }
     if (selectedDrink !== 'b0') {
       const d = bebidas.find(b => b.id === selectedDrink);
       const ln = document.createElement('div'); ln.className = 'line';
       ln.innerHTML = `<div>${d.name}</div><div>${formatCurrency(d.price)}</div>`;
       summaryLines.appendChild(ln);
       total += d.price;
-    }
-    if (selectedExtras.size) {
-      let sum = 0; selectedExtras.forEach(id => sum += extras.find(x => x.id === id).price);
-      const ln = document.createElement('div'); ln.className = 'line';
-      ln.innerHTML = `<div>Adicionais</div><div>${formatCurrency(sum)}</div>`;
-      summaryLines.appendChild(ln);
-      total += sum;
     }
     orderTotal.textContent = formatCurrency(total);
   }
@@ -389,52 +471,48 @@ async function autoFillLocation() {
     selectedMarmitas = [];
     selectedExtras = new Set();
     selectedDrink = 'b0';
+    selectedExtrasByMarmita = {};
   }
 
-  // Mounts order flow consistently below the result card
+  // Insere order flow após search-card (quando disponível)
   function mountOrderFlow() {
-  const searchCard = document.querySelector('.search-card');
-  if (!searchCard) return;
+    const searchCard = document.querySelector('.search-card');
+    if (!searchCard) return;
 
-  let mount = document.getElementById('orderMount');
-  if (!mount) {
-    mount = document.createElement('div');
-    mount.id = 'orderMount';
-    searchCard.insertAdjacentElement('afterend', mount);
+    let mount = document.getElementById('orderMount');
+    if (!mount) {
+      mount = document.createElement('div');
+      mount.id = 'orderMount';
+      searchCard.insertAdjacentElement('afterend', mount);
+    }
+
+    const orderFlowEl = $('orderFlow');
+    if (orderFlowEl && orderFlowEl.parentElement !== mount) {
+      mount.appendChild(orderFlowEl);
+    }
   }
-
-  const orderFlow = $('orderFlow');
-  if (orderFlow && orderFlow.parentElement !== mount) {
-    mount.appendChild(orderFlow);
-  }
-}
-
 
   function startOrderFlow() {
-  mountOrderFlow();
+    mountOrderFlow();
 
-  resetSelections();
-  buildMarmitas();
-  buildExtras();
-  buildBebidas();
-  updateFlow();
+    resetSelections();
+    buildMarmitas();
+    buildExtras();
+    buildBebidas();
+    updateFlow();
 
-  const orderFlow = $('orderFlow');
-  if (orderFlow) orderFlow.style.display = 'block';
+    const orderFlowEl = $('orderFlow');
+    if (orderFlowEl) orderFlowEl.style.display = 'block';
 
-  // show disclaimer popup (unless user opted out)
-  if (!localStorage.getItem('hideDisclaimer')) {
-    showDisclaimerPopup();
+    // show disclaimer popup (unless user opted out)
+    if (!localStorage.getItem('hideDisclaimer')) {
+      showDisclaimerPopup();
+    }
+
+    const anchor = $('orderMount');
+    anchor?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
-  const anchor = $('orderMount');
-  anchor?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-}
-
-
-
-
-  // Public handler for both desktop button and mobile popup
   function handleStartOrder() {
     try {
       startOrderFlow();
@@ -443,63 +521,58 @@ async function autoFillLocation() {
     }
   }
 
-  // Promo timer
+  // Promo timer (persistente via localStorage)
   (function startPromoCountdown(minutes) {
-  const minEl = $('promoMinutes'), secEl = $('promoSeconds');
-  if (!minEl || !secEl) return;
+    const minEl = $('promoMinutes'), secEl = $('promoSeconds');
+    if (!minEl || !secEl) return;
 
-  const PROMO_KEY = 'promoCountdownEndTime';
-  const now = Date.now();
-  let endTime = parseInt(localStorage.getItem(PROMO_KEY), 10);
-
-  if (!endTime || isNaN(endTime) || endTime < now) {
-    // Timer not started or expired, set new one
-    endTime = now + minutes * 60 * 1000;
-    localStorage.setItem(PROMO_KEY, endTime.toString());
-  }
-
-  function tick() {
+    const PROMO_KEY = 'promoCountdownEndTime';
     const now = Date.now();
-    let remaining = Math.max(0, Math.floor((endTime - now) / 1000));
+    let endTime = parseInt(localStorage.getItem(PROMO_KEY), 10);
 
-    const m = String(Math.floor(remaining / 60)).padStart(2, '0');
-    const s = String(remaining % 60).padStart(2, '0');
-    minEl.textContent = m;
-    secEl.textContent = s;
-
-    if (remaining <= 0) {
-      // Restart timer if you want it to be cyclic
-      endTime = Date.now() + minutes * 60 * 1000;
+    if (!endTime || isNaN(endTime) || endTime < now) {
+      endTime = now + minutes * 60 * 1000;
       localStorage.setItem(PROMO_KEY, endTime.toString());
     }
 
-    setTimeout(tick, 1000);
-  }
+    function tick() {
+      const now = Date.now();
+      let remaining = Math.max(0, Math.floor((endTime - now) / 1000));
 
-  tick();
-})(45); // 45 minutes
+      const m = String(Math.floor(remaining / 60)).padStart(2, '0');
+      const s = String(remaining % 60).padStart(2, '0');
+      minEl.textContent = m;
+      secEl.textContent = s;
 
+      if (remaining <= 0) {
+        endTime = Date.now() + minutes * 60 * 1000;
+        localStorage.setItem(PROMO_KEY, endTime.toString());
+      }
+
+      setTimeout(tick, 1000);
+    }
+
+    tick();
+  })(45); // 45 minutes
 
   // Search handling
   function simulateSearch(e){
-  if (e && e.preventDefault) e.preventDefault();
-  const st = stateSelect?.value || '';
-  const ct = citySelect?.value || '';
-  if (!st || !ct) { alert('Selecione estado e cidade'); return; }
-  if (overlay) overlay.style.display = 'flex';
+    if (e && e.preventDefault) e.preventDefault();
+    const st = stateSelect?.value || '';
+    const ct = citySelect?.value || '';
+    if (!st || !ct) { alert('Selecione estado e cidade'); return; }
+    if (overlay) overlay.style.display = 'flex';
 
-  setTimeout(()=>{
-    if (overlay) overlay.style.display = 'none';
-    showMobileResultPopup(ct, st); // sempre popup
-  }, 800);
-}
-
-
+    setTimeout(()=>{
+      if (overlay) overlay.style.display = 'none';
+      showMobileResultPopup(ct, st); // sempre popup
+    }, 800);
+  }
 
   if (searchForm) searchForm.addEventListener('submit', simulateSearch);
   else if (checkBtn) checkBtn.addEventListener('click', simulateSearch);
 
-  // Desktop "Fazer pedido" button (below the dropdowns)
+  // Desktop "Fazer pedido" button
   if (startOrderBtn) {
     startOrderBtn.addEventListener('click', (ev) => {
       ev.preventDefault();
@@ -507,12 +580,12 @@ async function autoFillLocation() {
     });
   }
 
-  // Mobile popup
+  // Mobile result popup
   function showMobileResultPopup(city, state) {
-    let popup = $('mobileResultPopup'); 
+    let popup = $('mobileResultPopup');
     if (popup) popup.remove();
 
-    popup = document.createElement('div'); 
+    popup = document.createElement('div');
     popup.id = 'mobileResultPopup';
     popup.style = 'position:fixed;left:0;top:0;width:100vw;height:100vh;background:rgba(15,23,32,0.97);display:flex;align-items:center;justify-content:center;z-index:2000;';
     popup.innerHTML = `
@@ -528,22 +601,20 @@ async function autoFillLocation() {
     `;
     document.body.appendChild(popup);
 
-    popup.querySelector('#closeMobileResult')
-      .addEventListener('click', () => popup.remove());
+    popup.querySelector('#closeMobileResult').addEventListener('click', () => popup.remove());
 
-    popup.querySelector('#popupStartOrder')
-  .addEventListener('click', (ev) => {
-    ev.preventDefault();
-    popup.remove();
-
-    if (resultArea) resultArea.style.display = 'block';
-    handleStartOrder();
-  });
-
-
+    popup.querySelector('#popupStartOrder').addEventListener('click', (ev) => {
+      ev.preventDefault();
+      popup.remove();
+      // Always show the result/order area and start the order flow
+      if (resultArea) resultArea.style.display = 'block';
+      const orderFlowEl = $('orderFlow');
+      if (orderFlowEl) orderFlowEl.style.display = 'block';
+      handleStartOrder();
+    });
   }
 
-  // Address/CEP/phone/CPF logic
+  // CEP / phone / CPF logic (melhorias das duas versões)
   if (cepInput) {
     cepInput.style.borderColor = '';
     cepInput.addEventListener('input', () => {
@@ -596,11 +667,42 @@ async function autoFillLocation() {
     cpfCheck.addEventListener('change', ()=> { cpfInput.style.display = cpfCheck.checked ? 'block' : 'none'; if (!cpfCheck.checked) cpfInput.value=''; });
   }
 
-  function validateCPF(cpf){ cpf = (cpf||'').replace(/\D/g,''); if (cpf.length!==11 || /^(\d)\1+$/.test(cpf)) return false; let sum=0,rest; for(let i=1;i<=9;i++) sum+=parseInt(cpf.substring(i-1,i))*(11-i); rest=(sum*10)%11; if(rest===10||rest===11)rest=0; if(rest!==parseInt(cpf.substring(9,10)))return false; sum=0; for(let i=1;i<=10;i++) sum+=parseInt(cpf.substring(i-1,i))*(12-i); rest=(sum*10)%11; if(rest===10||rest===11)rest=0; if(rest!==parseInt(cpf.substring(10,11)))return false; return true; }
+  function validateCPF(cpf){ 
+    cpf = (cpf||'').replace(/\D/g,''); 
+    if (cpf.length!==11 || /^(\d)\1+$/.test(cpf)) return false; 
+    let sum=0,rest; 
+    for(let i=1;i<=9;i++) sum+=parseInt(cpf.substring(i-1,i))*(11-i); 
+    rest=(sum*10)%11; if(rest===10||rest===11)rest=0; if(rest!==parseInt(cpf.substring(9,10)))return false; 
+    sum=0; 
+    for(let i=1;i<=10;i++) sum+=parseInt(cpf.substring(i-1,i))*(12-i); 
+    rest=(sum*10)%11; if(rest===10||rest===11)rest=0; if(rest!==parseInt(cpf.substring(10,11)))return false; 
+    return true; 
+  }
 
-  
+  if (checkoutBtn) {
+    checkoutBtn.addEventListener('click', (e)=>{
+      let valid = true;
+      if (nomeInput && !nomeInput.value.trim()) { nomeInput.style.borderColor='red'; valid=false; } else if (nomeInput) nomeInput.style.borderColor='';
+      if (cepInput) {
+        if (!cepInput.value.trim() || (cepError && cepError.style.display==='block')) { cepInput.style.borderColor='red'; valid=false; }
+        else cepInput.style.borderColor='';
+      }
+      if (ruaInput && !ruaInput.value.trim()) { ruaInput.style.borderColor='red'; valid=false; } else if (ruaInput) ruaInput.style.borderColor='';
+      if (numeroInput && !numeroInput.value.trim()) { numeroInput.style.borderColor='red'; valid=false; } else if (numeroInput) numeroInput.style.borderColor='';
+      if (bairroInput && !bairroInput.value.trim()) { bairroInput.style.borderColor='red'; valid=false; } else if (bairroInput) bairroInput.style.borderColor='';
+      if (cpfCheck && cpfCheck.checked) {
+        if (!cpfInput.value.trim() || !validateCPF(cpfInput.value)) { cpfInput.style.borderColor='red'; valid=false; } else cpfInput.style.borderColor='';
+      }
+      if (phoneInput) {
+        const p = phoneInput.value.replace(/\D/g,'');
+        if (!p || !isValidBrazilianPhone(p)) { phoneInput.style.borderColor='red'; if (phoneError) phoneError.style.display='block'; valid=false; }
+        else { phoneInput.style.borderColor=''; if (phoneError) phoneError.style.display='none'; }
+      }
+      if (!valid) { e.preventDefault(); alert('Por favor, corrija os campos destacados.'); return false; }
+    });
+  }
 
-  // Creates & shows a small disclaimer modal; respects "don't show again"
+  // Disclaimer popup (usei a versão mais informativa)
   function showDisclaimerPopup() {
     if (document.getElementById('disclaimerPopup')) return;
     const popup = document.createElement('div');
@@ -608,7 +710,8 @@ async function autoFillLocation() {
     popup.innerHTML = `
       <div class="card" role="dialog" aria-modal="true" aria-labelledby="disclaimerTitle">
         <h4 id="disclaimerTitle">✅ Aviso !</h4>
-        <p>Para essa promoção em uma das nossas cozinhas industriais mais próximas de você, é possível selecionar apenas um combo de 2x1 por vez !</p>
+        <p>Imagens ilustrativas — a apresentação do produto pode variar, mas garantimos a mesma qualidade e quantidade!</p>
+        <p>Para essa promoção em uma das nossas cozinhas industriais mais próximas de você, é possível selecionar apenas um combo de 2x1 por vez.</p>
         <div style="display:flex;align-items:center;gap:8px;margin-top:6px;">
           <label class="dontshow"><input type="checkbox" id="dontShowDisclaimer"> Não mostrar novamente</label>
         </div>
@@ -627,7 +730,6 @@ async function autoFillLocation() {
       popup.remove();
     });
 
-    // allow ESC to close
     const onKey = (e) => {
       if (e.key === 'Escape') {
         if (checkbox && checkbox.checked) localStorage.setItem('hideDisclaimer', '1');
@@ -639,4 +741,3 @@ async function autoFillLocation() {
   }
 
 });
-
