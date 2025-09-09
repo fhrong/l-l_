@@ -356,6 +356,17 @@ document.addEventListener('DOMContentLoaded', () => {
             height: 40px !important;
           }
         }
+        @media (min-width: 541px) {
+          #perMarmitaExtrasBox img {
+            max-width: 48px;
+            max-height: 48px;
+            width: 48px !important;
+            height: 48px !important;
+            object-fit: cover;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px #0002;
+          }
+        }
         #perMarmitaExtrasBox .marmita-extras-row {
           display: flex;
           align-items: center;
@@ -623,7 +634,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setTimeout(()=>{
       if (overlay) overlay.style.display = 'none';
       showMobileResultPopup(ct, st); // sempre popup
-    }, 800);
+    }, 1400);
   }
 
   if (searchForm) searchForm.addEventListener('submit', simulateSearch);
@@ -767,8 +778,7 @@ document.addEventListener('DOMContentLoaded', () => {
     popup.innerHTML = `
       <div class="card" role="dialog" aria-modal="true" aria-labelledby="disclaimerTitle">
         <h4 id="disclaimerTitle">✅ Aviso !</h4>
-        <p>Imagens ilustrativas — a apresentação do produto pode variar, mas garantimos a mesma qualidade e quantidade!</p>
-        <p>Para essa promoção em uma das nossas cozinhas industriais mais próximas de você, é possível selecionar apenas um combo de 2x1 por vez.</p>
+        <p>Para essa promoção em uma das nossas cozinhas industriais mais próximas de você, é possível selecionar mais de um combo de 2x1 por vez !</p>
         <div style="display:flex;align-items:center;gap:8px;margin-top:6px;">
           <label class="dontshow"><input type="checkbox" id="dontShowDisclaimer"> Não mostrar novamente</label>
         </div>
