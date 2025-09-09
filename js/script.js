@@ -205,7 +205,11 @@ document.addEventListener('DOMContentLoaded', () => {
   let selectedMarmitas = [];
   // Per-marmita extras: { [marmitaId]: Set(extraId) }
   let selectedExtrasByMarmita = {};
-  let selectedDrink = 'b0';
+  // Quantidade de combos
+  let comboQty = 1;
+  // Bebidas: { bebidaId: quantidade }
+  let selectedDrinks = { b0: 1 };
+  let selectedDrink = 'b0'; // compatibilidade legacy
   // extras gerais
   let selectedExtras = new Set();
 
@@ -430,15 +434,37 @@ document.addEventListener('DOMContentLoaded', () => {
     bebidas.forEach(b => {
       const d = document.createElement('div');
       d.className = 'chip';
-      d.textContent = `${b.name}${b.price? ' + ' + formatCurrency(b.price): ''}`;
-      d.addEventListener('click', () => {
-        selectedDrink = b.id;
-        Array.from(list.children).forEach(c => c.style.background = '');
-        d.style.background = 'rgba(255,107,0,0.08)';
-        updateSummary();
+      let qty = selectedDrinks[b.id] || 0;
+      d.innerHTML = `${b.name}${b.price? ' + ' + formatCurrency(b.price): ''}` + (b.id !== 'b0' ? `<span style="margin-left:10px;font-weight:700;">${qty > 0 ? qty : ''}</span> <button class="plus-btn" style="margin-left:6px;font-weight:900;">+</button> <button class="minus-btn" style="margin-left:2px;font-weight:900;">-</button>` : '');
+      d.addEventListener('click', (e) => {
+        if (b.id === 'b0') {
+          selectedDrinks = { b0: comboQty };
+          buildBebidas();
+          updateSummary();
+          return;
+        }
       });
+      // Plus/minus para bebidas
+      if (b.id !== 'b0') {
+        d.querySelector('.plus-btn').addEventListener('click', (ev) => {
+          ev.stopPropagation();
+          selectedDrinks[b.id] = (selectedDrinks[b.id] || 0) + 1;
+          if (selectedDrinks['b0']) delete selectedDrinks['b0'];
+          buildBebidas();
+          updateSummary();
+        });
+        d.querySelector('.minus-btn').addEventListener('click', (ev) => {
+          ev.stopPropagation();
+          if (selectedDrinks[b.id]) selectedDrinks[b.id]--;
+          if (selectedDrinks[b.id] <= 0) delete selectedDrinks[b.id];
+          if (Object.keys(selectedDrinks).length === 0) selectedDrinks['b0'] = comboQty;
+          buildBebidas();
+          updateSummary();
+        });
+      }
+      // Destaque se selecionado
+      if ((b.id === 'b0' && selectedDrinks['b0']) || (b.id !== 'b0' && selectedDrinks[b.id])) d.style.background = 'rgba(255,107,0,0.08)';
       list.appendChild(d);
-      if (selectedDrink === b.id) d.style.background = 'rgba(255,107,0,0.08)';
     });
   }
 
@@ -478,6 +504,27 @@ document.addEventListener('DOMContentLoaded', () => {
       if (old) old.remove();
     }
     if (bebidasBox) bebidasBox.style.display = show ? 'block' : 'none';
+    // Adiciona seletor de combos após bebidasBox
+    let comboQtyBox = document.getElementById('comboQtyBox');
+    if (show && bebidasBox) {
+      if (!comboQtyBox) {
+        comboQtyBox = document.createElement('div');
+        comboQtyBox.id = 'comboQtyBox';
+        comboQtyBox.style = 'margin: 28px 0 18px 0; text-align:center;';
+        bebidasBox.parentNode.insertBefore(comboQtyBox, bebidasBox.nextSibling);
+      }
+      comboQtyBox.innerHTML = `<label style=\"font-weight:700;font-size:1.1em;\">Combos de marmita</label><br><button id=\"minusCombo\" style=\"font-size:1.3em;margin:0 8px;\">-</button><span id=\"comboQtyVal\" style=\"font-size:1.2em;font-weight:700;\">${comboQty}</span><button id=\"plusCombo\" style=\"font-size:1.3em;margin:0 8px;\">+</button><div id=\"comboPromoMsg\" style=\"margin-top:8px;color:#ffb43a;font-weight:700;\"></div>`;
+      // Promo especial
+      const promoMsg = document.getElementById('comboPromoMsg');
+      if (comboQty === 3) promoMsg.textContent = 'Aproveite: 3 combos por apenas R$ 64,90!';
+      else promoMsg.textContent = '';
+      document.getElementById('minusCombo').onclick = () => {
+        if (comboQty > 1) { comboQty--; if (selectedDrinks['b0']) selectedDrinks['b0'] = comboQty; updateFlow(); }
+      };
+      document.getElementById('plusCombo').onclick = () => {
+        comboQty++; if (selectedDrinks['b0']) selectedDrinks['b0'] = comboQty; updateFlow();
+      };
+    } else if (comboQtyBox) { comboQtyBox.remove(); }
     if (addressBox) addressBox.style.display = show ? 'block' : 'none';
     if (summaryBox) summaryBox.style.display = show ? 'block' : 'none';
     if (show) updateSummary();
@@ -486,32 +533,46 @@ document.addEventListener('DOMContentLoaded', () => {
   function updateSummary() {
     if (!summaryLines || !promoPriceEl || !orderTotal) return;
     summaryLines.innerHTML = '';
-    selectedMarmitas.forEach(id => {
-      const m = marmitas.find(x => x.id === id);
-      const ln = document.createElement('div'); ln.className = 'line';
-      // List additionals for this marmita
-      let extrasText = '';
-      if (selectedExtrasByMarmita[id] && selectedExtrasByMarmita[id].size) {
-        extrasText = Array.from(selectedExtrasByMarmita[id]).map(eid => {
-          const e = extras.find(x => x.id === eid);
-          return e ? e.name : '';
-        }).filter(Boolean).join(', ');
-      }
-      ln.innerHTML = `<div>${m.name}${extrasText ? ' <span style="color:#ffb43a;font-size:0.95em">+ ' + extrasText + '</span>' : ''}</div><div>incluído</div>`;
-      summaryLines.appendChild(ln);
-    });
-    promoPriceEl.textContent = formatCurrency(PROMO_PRICE);
-    let total = PROMO_PRICE;
-    // Add extras price per marmita
-    selectedMarmitas.forEach(id => {
-      if (selectedExtrasByMarmita[id]) {
-        selectedExtrasByMarmita[id].forEach(eid => {
-          const e = extras.find(x => x.id === eid);
-          if (e) total += e.price;
-        });
-      }
-    });
-    // Add general extras
+    // Mostrar combos
+    for (let c = 0; c < comboQty; c++) {
+      selectedMarmitas.forEach(id => {
+        const m = marmitas.find(x => x.id === id);
+        const ln = document.createElement('div'); ln.className = 'line';
+        // List additionals for this marmita
+        let extrasText = '';
+        if (selectedExtrasByMarmita[id] && selectedExtrasByMarmita[id].size) {
+          extrasText = Array.from(selectedExtrasByMarmita[id]).map(eid => {
+            const e = extras.find(x => x.id === eid);
+            return e ? e.name : '';
+          }).filter(Boolean).join(', ');
+        }
+        ln.innerHTML = `<div>${m.name}${extrasText ? ' <span style=\"color:#ffb43a;font-size:0.95em\">+ ' + extrasText + '</span>' : ''}</div><div>incluído</div>`;
+        summaryLines.appendChild(ln);
+      });
+    }
+    // Preço combos
+    let total = 0;
+    let promo = PROMO_PRICE * comboQty;
+    // Promo especial 3 combos
+    let promoLabel = '';
+    if (comboQty === 3) {
+      promo = 64.90;
+      promoLabel = '<span style=\"color:#ffb43a;font-size:1.1em;font-weight:700;\">Promoção: 3 combos por R$ 64,90!</span>';
+    }
+    promoPriceEl.innerHTML = formatCurrency(promo) + (promoLabel ? '<br>' + promoLabel : '');
+    total += promo;
+    // Extras por combo
+    for (let c = 0; c < comboQty; c++) {
+      selectedMarmitas.forEach(id => {
+        if (selectedExtrasByMarmita[id]) {
+          selectedExtrasByMarmita[id].forEach(eid => {
+            const e = extras.find(x => x.id === eid);
+            if (e) total += e.price;
+          });
+        }
+      });
+    }
+    // Extras gerais
     if (selectedExtras && selectedExtras.size) {
       selectedExtras.forEach(eid => {
         const e = extras.find(x => x.id === eid);
@@ -519,27 +580,33 @@ document.addEventListener('DOMContentLoaded', () => {
           const ln = document.createElement('div'); ln.className = 'line';
           ln.innerHTML = `<div>${e.name}</div><div>${formatCurrency(e.price)}</div>`;
           summaryLines.appendChild(ln);
-          total += e.price;
+          total += e.price * comboQty;
         }
       });
     }
-    if (selectedDrink !== 'b0') {
-      const d = bebidas.find(b => b.id === selectedDrink);
-      const ln = document.createElement('div'); ln.className = 'line';
-      ln.innerHTML = `<div>${d.name}</div><div>${formatCurrency(d.price)}</div>`;
-      summaryLines.appendChild(ln);
-      total += d.price;
-    }
+    // Bebidas
+    Object.entries(selectedDrinks).forEach(([bid, qty]) => {
+      if (bid === 'b0') return;
+      const b = bebidas.find(x => x.id === bid);
+      if (b && qty > 0) {
+        const ln = document.createElement('div'); ln.className = 'line';
+        ln.innerHTML = `<div>${b.name} x${qty}</div><div>${formatCurrency(b.price * qty)}</div>`;
+        summaryLines.appendChild(ln);
+        total += b.price * qty;
+      }
+    });
     orderTotal.textContent = formatCurrency(total);
   }
 
   function formatCurrency(n){ return n.toLocaleString('pt-BR',{style:'currency',currency:'BRL'}); }
 
   function resetSelections() {
-    selectedMarmitas = [];
-    selectedExtras = new Set();
-    selectedDrink = 'b0';
-    selectedExtrasByMarmita = {};
+  selectedMarmitas = [];
+  selectedExtras = new Set();
+  selectedDrink = 'b0';
+  selectedDrinks = { b0: 1 };
+  comboQty = 1;
+  selectedExtrasByMarmita = {};
   }
 
   // Insere order flow após search-card (quando disponível)
