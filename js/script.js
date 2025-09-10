@@ -243,11 +243,11 @@ document.addEventListener('DOMContentLoaded', () => {
       const orderFlow = document.getElementById('orderFlow');
       if (orderFlow) orderFlow.parentNode.insertBefore(stepBar, orderFlow);
     }
-    // Responsive, icon-based, always horizontal
+    // Responsive, icon-based, always horizontal, short labels
     const steps = [
       { label: 'Combo', icon: '🥡' },
-      { label: 'Adicionais', icon: '➕' },
-      { label: 'Bebidas', icon: '🥤' },
+      { label: 'Extras', icon: '➕' },
+      { label: 'Bebida', icon: '🥤' },
       { label: 'Endereço', icon: '📦' }
     ];
     stepBar.innerHTML = steps.map((s, i) =>
