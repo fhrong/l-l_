@@ -213,6 +213,47 @@ document.addEventListener('DOMContentLoaded', () => {
   // extras gerais
   let selectedExtras = new Set();
 
+  // --- Dynamic Offer Banner ---
+  function showDynamicOfferBanner() {
+    let banner = document.getElementById('dynamicOfferBanner');
+    if (!banner) {
+      banner = document.createElement('div');
+      banner.id = 'dynamicOfferBanner';
+      banner.style = 'width:100%;text-align:center;margin:10px 0 18px 0;font-weight:700;font-size:1.08rem;color:#ff7d26;background:#fff7f0;border-radius:8px;padding:8px 0;box-shadow:0 1px 6px #ff7d2622;letter-spacing:0.2px;';
+      const orderFlow = document.getElementById('orderFlow');
+      if (orderFlow) orderFlow.parentNode.insertBefore(banner, orderFlow);
+    }
+    // Randomly pick which message to show
+    if (Math.random() < 0.5) {
+      const viewers = Math.floor(Math.random() * 17) + 7; // 7-23
+      banner.textContent = `${viewers} pessoas estão vendo esta oferta agora`;
+    } else {
+      const stock = Math.floor(Math.random() * 6) + 8; // 8-13
+      banner.textContent = `Últimas ${stock} marmitas disponíveis`;
+    }
+  }
+
+  // --- Step Indicator ---
+  function showStepIndicator(currentStep = 1) {
+    let stepBar = document.getElementById('stepIndicator');
+    if (!stepBar) {
+      stepBar = document.createElement('div');
+      stepBar.id = 'stepIndicator';
+      stepBar.style = 'display:flex;justify-content:center;gap:8px;margin:0 0 18px 0;align-items:center;font-size:15px;font-weight:600;';
+      const orderFlow = document.getElementById('orderFlow');
+      if (orderFlow) orderFlow.parentNode.insertBefore(stepBar, orderFlow);
+    }
+    const steps = [
+      '1. Escolha o combo',
+      '2. Adicionais',
+      '3. Bebidas',
+      '4. Endereço'
+    ];
+    stepBar.innerHTML = steps.map((s, i) =>
+      `<span style="padding:4px 10px;border-radius:16px;${i+1===currentStep?'background:#ff7d26;color:#fff;':'background:#f2f2f2;color:#ff7d26;'}">${s}</span>${i<steps.length-1?'<span style="color:#bbb;font-size:18px;">→</span>':''}`
+    ).join('');
+  }
+
   // Init: load states/cities and attempt autofill
   fetch('citys.json').then(r => r.json()).then(json => {
     estadosData = json.estados || [];
@@ -491,8 +532,40 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function updateFlow() {
+    // --- Upsell sobremesa after bebidas ---
+    let sobremesaBox = document.getElementById('sobremesaBox');
+    if (bebidasBox && bebidasBox.style.display !== 'none') {
+      if (!sobremesaBox) {
+        sobremesaBox = document.createElement('div');
+        sobremesaBox.id = 'sobremesaBox';
+        sobremesaBox.style = 'margin: 18px 0 18px 0; text-align:center; background:#fff7f0; border-radius:10px; box-shadow:0 1px 6px #ff7d2622; padding:14px 0;';
+        bebidasBox.parentNode.insertBefore(sobremesaBox, bebidasBox.nextSibling);
+      }
+      sobremesaBox.innerHTML = `<label style='font-weight:700;font-size:1.08em;'>Leve a sobremesa do dia por apenas <span style='color:#ff7d26;'>R$2,90</span></label><br><input type='checkbox' id='addSobremesa' style='transform:scale(1.3);margin:10px 6px 0 0;'><label for='addSobremesa' style='font-size:1em;cursor:pointer;'>Sim, quero sobremesa!</label>`;
+      const cb = sobremesaBox.querySelector('#addSobremesa');
+      cb.checked = !!window.addSobremesa;
+      cb.onchange = () => { window.addSobremesa = cb.checked; updateSummary(); };
+    } else if (sobremesaBox) { sobremesaBox.remove(); }
+    // Cross-sell: banner para 4 combos
+    let crossBanner = document.getElementById('crossSellBanner');
+    if (comboQty < 4) {
+      if (!crossBanner) {
+        crossBanner = document.createElement('div');
+        crossBanner.id = 'crossSellBanner';
+        crossBanner.style = 'margin:18px 0 8px 0;text-align:center;background:#fff7f0;color:#ff7d26;font-weight:700;padding:8px 0;border-radius:8px;box-shadow:0 1px 6px #ff7d2622;';
+        summaryBox.insertBefore(crossBanner, summaryBox.firstChild);
+      }
+      crossBanner.innerHTML = 'Leve <span style="color:#ff3c00;">4 combos</span> e pague só <span style="color:#ff3c00;">R$ 84,90</span>!';
+    } else if (crossBanner) { crossBanner.remove(); }
+    showDynamicOfferBanner();
+    // Detect current step (very simple: based on which box is visible)
+    let step = 1;
+    if (extrasBox && extrasBox.style.display !== 'none') step = 2;
+    if (bebidasBox && bebidasBox.style.display !== 'none') step = 3;
+    if (addressBox && addressBox.style.display !== 'none') step = 4;
+    showStepIndicator(step);
+    // ...existing code...
     const show = (selectedMarmitas.length === 2);
-    // Hide old extras UI
     if (extrasBox) extrasBox.style.display = show ? 'block' : 'none';
     if (extrasBox && !show) {
       // when hiding, clear general selected extras UI (optional)
@@ -525,8 +598,43 @@ document.addEventListener('DOMContentLoaded', () => {
         comboQty++; if (selectedDrinks['b0']) selectedDrinks['b0'] = comboQty; updateFlow();
       };
     } else if (comboQtyBox) { comboQtyBox.remove(); }
-    if (addressBox) addressBox.style.display = show ? 'block' : 'none';
-    if (summaryBox) summaryBox.style.display = show ? 'block' : 'none';
+    if (addressBox) {
+      addressBox.style.display = show ? 'block' : 'none';
+      // Always ensure address-fields are visible
+      const addressFields = addressBox.querySelector('.address-fields');
+      if (addressFields) addressFields.style.display = 'block';
+      // Input masks for phone and CEP
+      const phone = document.getElementById('phoneInput');
+      if (phone && !phone.hasAttribute('data-masked')) {
+        phone.setAttribute('pattern', '[0-9]{2} [0-9]{5}-[0-9]{4}');
+        phone.setAttribute('placeholder', '11 91234-5678');
+        phone.setAttribute('autocomplete', 'tel');
+        phone.setAttribute('data-masked', '1');
+        phone.addEventListener('input', function(e) {
+          let v = phone.value.replace(/\D/g, '');
+          if (v.length > 2) v = v.replace(/(\d{2})(\d)/, '$1 $2');
+          if (v.length > 8) v = v.replace(/(\d{2}) (\d{5})(\d)/, '$1 $2-$3');
+          phone.value = v;
+        });
+      }
+      const cep = document.getElementById('cepInput');
+      if (cep && !cep.hasAttribute('data-masked')) {
+        cep.setAttribute('pattern', '\d{5}-\d{3}');
+        cep.setAttribute('placeholder', '14000-000');
+        cep.setAttribute('autocomplete', 'postal-code');
+        cep.setAttribute('data-masked', '1');
+        cep.addEventListener('input', function(e) {
+          let v = cep.value.replace(/\D/g, '');
+          if (v.length > 5) v = v.replace(/(\d{5})(\d)/, '$1-$2');
+          cep.value = v;
+        });
+      }
+    }
+  if (summaryBox) summaryBox.style.display = show ? 'block' : 'none';
+  // Minimize required fields: hide optional fields (bairro, complemento, etc)
+  const bairro = document.getElementById('bairroInput');
+  if (bairro) bairro.style.display = 'none';
+  // Autofill is already enabled for address/phone fields
     if (show) updateSummary();
   }
 
@@ -550,17 +658,49 @@ document.addEventListener('DOMContentLoaded', () => {
         summaryLines.appendChild(ln);
       });
     }
-    // Preço combos
-    let total = 0;
-    let promo = PROMO_PRICE * comboQty;
-    // Promo especial 3 combos
-    let promoLabel = '';
-    if (comboQty === 3) {
-      promo = 64.90;
-      promoLabel = '<span style=\"color:#ffb43a;font-size:1.1em;font-weight:700;\">Promoção: 3 combos por R$ 64,90!</span>';
+    // Add visual seals to summary if not present (never in addressBox)
+    let seals = document.getElementById('visualSeals');
+    if (!seals && summaryBox) {
+      seals = document.createElement('div');
+      seals.id = 'visualSeals';
+      seals.style = 'display:flex;gap:10px;justify-content:center;margin:18px 0 8px 0;';
+      seals.innerHTML = `
+        <span style="background:#eaffea;color:#1a7f37;font-weight:700;padding:4px 12px;border-radius:16px;font-size:14px;display:inline-flex;align-items:center;gap:4px;">🚚 Entrega Rápida</span>
+        <span style="background:#fff7f0;color:#ff7d26;font-weight:700;padding:4px 12px;border-radius:16px;font-size:14px;display:inline-flex;align-items:center;gap:4px;">🔒 Pagamento Seguro</span>
+        <span style="background:#f0f7ff;color:#1a7f37;font-weight:700;padding:4px 12px;border-radius:16px;font-size:14px;display:inline-flex;align-items:center;gap:4px;">😊 Satisfação Garantida</span>
+      `;
+      summaryBox.insertBefore(seals, summaryBox.firstChild);
     }
-    promoPriceEl.innerHTML = formatCurrency(promo) + (promoLabel ? '<br>' + promoLabel : '');
-    total += promo;
+    // Add payment methods row before checkoutBtn
+    let payRow = document.getElementById('paymentMethodsRow');
+    if (!payRow) {
+      payRow = document.createElement('div');
+      payRow.id = 'paymentMethodsRow';
+      payRow.style = 'display:flex;gap:12px;align-items:center;justify-content:center;margin:18px 0 0 0;font-size:15px;';
+      payRow.innerHTML = `Aceitamos: <img src='https://upload.wikimedia.org/wikipedia/commons/thumb/a/a2/Logo%E2%80%94pix_powered_by_Banco_Central_%28Brazil%2C_2020%29.svg/800px-Logo%E2%80%94pix_powered_by_Banco_Central_%28Brazil%2C_2020%29.svg.png' alt='Pix' style='height:22px;vertical-align:middle;'> <img src='https://upload.wikimedia.org/wikipedia/commons/4/41/Visa_Logo.png' alt='Visa' style='height:22px;vertical-align:middle;'> <img src='https://upload.wikimedia.org/wikipedia/commons/0/04/Mastercard-logo.png' alt='Mastercard' style='height:22px;vertical-align:middle;'> <img src='https://upload.wikimedia.org/wikipedia/commons/d/da/Elo_card_association_logo_-_black_text.svg' alt='Elo' style='height:22px;vertical-align:middle;'>`;
+      summaryBox.appendChild(payRow);
+    }
+  // Preço combos
+  let total = 0;
+  let promo = PROMO_PRICE * comboQty;
+  // Promo especial 3 combos
+  let promoLabel = '';
+  if (comboQty === 3) {
+    promo = 64.90;
+    promoLabel = '<span style=\"color:#ffb43a;font-size:1.1em;font-weight:700;\">Promoção: 3 combos por R$ 64,90!</span>';
+  } else if (comboQty === 4) {
+    promo = 84.90;
+    promoLabel = '<span style=\"color:#ff3c00;font-size:1.1em;font-weight:700;\">Leve 4 combos e pague só R$ 84,90!</span>';
+  }
+  promoPriceEl.innerHTML = formatCurrency(promo) + (promoLabel ? '<br>' + promoLabel : '');
+  total += promo;
+    // Sobremesa upsell
+    if (window.addSobremesa) {
+      const ln = document.createElement('div'); ln.className = 'line';
+      ln.innerHTML = `<div>Sobremesa</div><div>R$ 2,90</div>`;
+      summaryLines.appendChild(ln);
+      total += 2.90;
+    }
     // Extras por combo
     for (let c = 0; c < comboQty; c++) {
       selectedMarmitas.forEach(id => {

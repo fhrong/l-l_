@@ -14,7 +14,7 @@
   padding: 7px 22px 7px 14px;
   box-shadow: 0 2px 8px 0 rgba(34,197,94,0.09);
   letter-spacing: 0.5px;
-  border: 2px solid #8ff6a7;
+  border: 2px solid #4be07b;
   gap: 10px;
 }
 .open-dot {
@@ -222,18 +222,39 @@ input:focus{
 
 /* Button */
 .btn{
-  background:var(--accent);
-  color:#071022;
-  padding:13px 22px;
-  border-radius:var(--radius);
-  font-weight:800;
-  border:0;
-  cursor:pointer;
-  font-size:16px;
-  box-shadow:0 2px 8px 0 rgba(255,107,0,0.09);
-  transition:background var(--transition), transform var(--transition);
+  background: linear-gradient(90deg, #ff7d26 0%, #ff3c00 100%);
+  color: #fff;
+  font-weight: 800;
+  border: none;
+  border-radius: 8px;
+  padding: 13px 22px;
+  font-size: 16px;
+  cursor: pointer;
+  box-shadow: 0 2px 8px #ff7d2622;
+  transition: background 0.2s, transform 0.15s;
 }
-.btn:hover,.btn:focus{ background:#ff7d26; transform:translateY(-2px) scale(1.03); }
+.btn:hover, .btn:focus {
+  background: linear-gradient(90deg, #ff3c00 0%, #ff7d26 100%);
+  transform: translateY(-2px) scale(1.03);
+}
+
+/* Green success button (for confirmed, entrega rápida, etc) */
+.btn-success {
+  background: linear-gradient(90deg, #1a7f37 0%, #4be07b 100%);
+  color: #fff;
+  font-weight: 800;
+  border: none;
+  border-radius: 8px;
+  padding: 13px 22px;
+  font-size: 16px;
+  cursor: pointer;
+  box-shadow: 0 2px 8px #1a7f3722;
+  transition: background 0.2s, transform 0.15s;
+}
+.btn-success:hover, .btn-success:focus {
+  background: linear-gradient(90deg, #4be07b 0%, #1a7f37 100%);
+  transform: translateY(-2px) scale(1.03);
+}
 
 /* Marmitas grid */
 .marmitas-grid{
