@@ -239,18 +239,22 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!stepBar) {
       stepBar = document.createElement('div');
       stepBar.id = 'stepIndicator';
-      stepBar.style = 'display:flex;justify-content:center;gap:8px;margin:0 0 18px 0;align-items:center;font-size:15px;font-weight:600;';
+      stepBar.className = 'step-indicator';
       const orderFlow = document.getElementById('orderFlow');
       if (orderFlow) orderFlow.parentNode.insertBefore(stepBar, orderFlow);
     }
+    // Responsive, icon-based, always horizontal
     const steps = [
-      '1. Escolha o combo',
-      '2. Adicionais',
-      '3. Bebidas',
-      '4. Endereço'
+      { label: 'Combo', icon: '🥡' },
+      { label: 'Adicionais', icon: '➕' },
+      { label: 'Bebidas', icon: '🥤' },
+      { label: 'Endereço', icon: '📦' }
     ];
     stepBar.innerHTML = steps.map((s, i) =>
-      `<span style="padding:4px 10px;border-radius:16px;${i+1===currentStep?'background:#ff7d26;color:#fff;':'background:#f2f2f2;color:#ff7d26;'}">${s}</span>${i<steps.length-1?'<span style="color:#bbb;font-size:18px;">→</span>':''}`
+      `<div class="step${i+1===currentStep?' active':''}">
+        <div class="step-circle">${s.icon}</div>
+        <div class="step-label">${s.label}</div>
+      </div>${i<steps.length-1?'<div class="step-arrow">→</div>':''}`
     ).join('');
   }
 
@@ -676,8 +680,16 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!payRow) {
       payRow = document.createElement('div');
       payRow.id = 'paymentMethodsRow';
-      payRow.style = 'display:flex;gap:12px;align-items:center;justify-content:center;margin:18px 0 0 0;font-size:15px;';
-      payRow.innerHTML = `Aceitamos: <img src='https://upload.wikimedia.org/wikipedia/commons/thumb/a/a2/Logo%E2%80%94pix_powered_by_Banco_Central_%28Brazil%2C_2020%29.svg/800px-Logo%E2%80%94pix_powered_by_Banco_Central_%28Brazil%2C_2020%29.svg.png' alt='Pix' style='height:22px;vertical-align:middle;'> <img src='https://upload.wikimedia.org/wikipedia/commons/4/41/Visa_Logo.png' alt='Visa' style='height:22px;vertical-align:middle;'> <img src='https://upload.wikimedia.org/wikipedia/commons/0/04/Mastercard-logo.png' alt='Mastercard' style='height:22px;vertical-align:middle;'> <img src='https://upload.wikimedia.org/wikipedia/commons/d/da/Elo_card_association_logo_-_black_text.svg' alt='Elo' style='height:22px;vertical-align:middle;'>`;
+      payRow.className = 'payment-methods-row';
+      payRow.innerHTML = `
+        <div class="pay-label">Aceitamos:</div>
+        <div class="pay-icons">
+          <img src='https://upload.wikimedia.org/wikipedia/commons/thumb/a/a2/Logo%E2%80%94pix_powered_by_Banco_Central_%28Brazil%2C_2020%29.svg/800px-Logo%E2%80%94pix_powered_by_Banco_Central_%28Brazil%2C_2020%29.svg.png' alt='Pix'>
+          <img src='https://upload.wikimedia.org/wikipedia/commons/4/41/Visa_Logo.png' alt='Visa'>
+          <img src='https://upload.wikimedia.org/wikipedia/commons/0/04/Mastercard-logo.png' alt='Mastercard'>
+          <img src='https://upload.wikimedia.org/wikipedia/commons/d/da/Elo_card_association_logo_-_black_text.svg' alt='Elo'>
+        </div>
+      `;
       summaryBox.appendChild(payRow);
     }
   // Preço combos
