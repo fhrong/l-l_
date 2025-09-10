@@ -6,6 +6,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   checkoutBtn.addEventListener('click', async (e) => {
     e.preventDefault();
+    if (typeof window.isOrderFormValid === 'function' && !window.isOrderFormValid(true)) {
+      return;
+    }
 
     const orderId = 'order_' + Date.now();
 

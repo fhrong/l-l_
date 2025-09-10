@@ -1,3 +1,43 @@
+  // Global validation function for order form
+  window.isOrderFormValid = function(showAlert = true) {
+    let valid = true;
+    const requiredFields = [nomeInput, cepInput, ruaInput, numeroInput, phoneInput];
+    requiredFields.forEach(f => {
+      if (f && !f.value.trim()) {
+        f.style.borderColor = 'red';
+        valid = false;
+      } else if (f) {
+        f.style.borderColor = '';
+      }
+    });
+    if (cepInput && cepError && cepError.style.display === 'block') {
+      cepInput.style.borderColor = 'red';
+      valid = false;
+    }
+    if (phoneInput) {
+      const p = phoneInput.value.replace(/\D/g, '');
+      if (!p || !isValidBrazilianPhone(p)) {
+        phoneInput.style.borderColor = 'red';
+        if (phoneError) phoneError.style.display = 'block';
+        valid = false;
+      } else {
+        phoneInput.style.borderColor = '';
+        if (phoneError) phoneError.style.display = 'none';
+      }
+    }
+    if (cpfCheck && cpfCheck.checked) {
+      if (!cpfInput.value.trim() || !validateCPF(cpfInput.value)) {
+        cpfInput.style.borderColor = 'red';
+        valid = false;
+      } else {
+        cpfInput.style.borderColor = '';
+      }
+    }
+    if (!valid && showAlert) {
+      alert('Por favor, preencha todos os campos obrigatórios corretamente.');
+    }
+    return valid;
+  };
 // script.js (merged & cleaned - corrigido buildExtras + extrasBox visibility)
 document.addEventListener('DOMContentLoaded', () => {
   'use strict';
