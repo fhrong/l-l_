@@ -1009,6 +1009,7 @@ document.addEventListener('DOMContentLoaded', () => {
       <div class="card" role="dialog" aria-modal="true" aria-labelledby="disclaimerTitle">
         <h4 id="disclaimerTitle">✅ Aviso !</h4>
         <p>Para essa promoção em uma das nossas cozinhas industriais mais próximas de você, é possível selecionar mais de um combo de 2x1 por vez !</p>
+        <p>FRETE GRÁTIS !🛵✅</p>
         <div style="display:flex;align-items:center;gap:8px;margin-top:6px;">
           <label class="dontshow"><input type="checkbox" id="dontShowDisclaimer"> Não mostrar novamente</label>
         </div>
